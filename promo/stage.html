@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>NOAH — ролик</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Exo+2:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: Manrope, sans-serif; color: #2a2a2a; background: #e8e0d3; }
+  .scene { position: absolute; inset: 0; overflow: hidden; transform-origin: 50% 45%; }
+  .abs { position: absolute; left: 0; top: 0; }
+  .studio { position: absolute; inset: -80px; background: radial-gradient(ellipse 120% 70% at 50% 18%, #f3eee6 0%, #e8e0d3 55%, #dcd2c2 100%); }
+  .studio.night { background: radial-gradient(ellipse 120% 70% at 50% 25%, #2b3042 0%, #1e2230 55%, #171a24 100%); }
+  .studio.tint { background: var(--tint); }
+  #grain { position: absolute; inset: -60px; z-index: 900; pointer-events: none; opacity: .075; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>"); }
+
+  .solid { position: absolute; left: 0; top: 0; }
+  .solid .face { position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 3px 0 rgba(255,255,255,.35), inset 0 -24px 40px rgba(0,0,0,.07); overflow: hidden; }
+  .solid .side { position: absolute; left: 0; right: 0; border-radius: inherit; }
+  .solid .shadow { position: absolute; left: 6%; right: 6%; height: 60px; border-radius: 50%; background: radial-gradient(ellipse, rgba(70,52,34,.32), transparent 70%); filter: blur(6px); }
+  .ball { position: absolute; left: 0; top: 0; border-radius: 50%; }
+
+  .h1 { position: absolute; left: 0; top: 0; font-weight: 800; letter-spacing: -4px; line-height: 1.0; white-space: nowrap; }
+  .h1 .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 3px 16px; margin-bottom: -16px; }
+  .h1 .w > span { display: inline-block; }
+  .muted { color: #9a8f80; }
+  .mono { position: absolute; left: 0; top: 0; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 28px; letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; color: #a06b98; }
+  .mono.cyan { color: #4fb7bf; }
+  .label { position: absolute; left: 44px; top: 50%; transform: translateY(-50%); font-weight: 800; font-size: 44px; letter-spacing: -1px; color: #2a2a2a; white-space: nowrap; }
+  .meta { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 24px; letter-spacing: 1px; padding: 10px 18px; border-radius: 30px; background: rgba(255,255,255,.5); color: #4b4439; }
+  .bar { position: absolute; left: 44px; right: 44px; bottom: 20px; height: 6px; border-radius: 4px; background: rgba(0,0,0,.08); overflow: hidden; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #4fb7bf; border-radius: 4px; }
+  .dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 18px; vertical-align: middle; }
+
+  .phone { position: absolute; left: 0; top: 0; padding: 14px; border-radius: 76px; background: linear-gradient(150deg, #44413c, #1e1d1b); box-shadow: inset 0 2px 0 rgba(255,255,255,.12), 0 60px 90px -20px rgba(50,38,26,.45), 0 16px 30px rgba(50,38,26,.2); }
+  .phone .glass { width: 100%; height: 100%; border-radius: 64px; overflow: hidden; position: relative; background: #000; }
+  .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .phone .glass::after { content: ""; position: absolute; left: 50%; top: 14px; width: 140px; height: 38px; margin-left: -70px; border-radius: 20px; background: #000; }
+  .window { position: absolute; left: 0; top: 0; border-radius: 26px; background: #0b0f17; overflow: hidden; box-shadow: 0 60px 100px -20px rgba(20,16,30,.5), 0 14px 30px rgba(20,16,30,.25); }
+  .window .bar2 { position: absolute; left: 0; right: 0; top: 0; height: 46px; background: #d9d1c4; display: flex; align-items: center; gap: 12px; padding: 0 20px; }
+  .window .bar2 i { width: 15px; height: 15px; border-radius: 50%; background: #b8ad9c; display: block; }
+  .window .bar2 span { margin-left: 16px; font: 700 20px "JetBrains Mono"; color: #5b554c; background: #efe8dc; border-radius: 10px; padding: 3px 14px; }
+  .window .view { position: absolute; left: 0; right: 0; bottom: 0; top: 46px; background-size: 100% auto; background-repeat: no-repeat; }
+  .chip { position: absolute; left: 0; top: 0; border-radius: 50%; background: radial-gradient(circle at 45% 35%, #333a52, #1a1d28 72%); box-shadow: inset 0 3px 0 rgba(255,255,255,.08), 0 40px 70px -16px rgba(30,24,40,.5); overflow: hidden; }
+  .chip canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .msg { position: absolute; left: 0; top: 0; background: #fbf8f2; border-radius: 36px 36px 36px 10px; padding: 24px 34px 28px; font-weight: 700; font-size: 42px; line-height: 1.2; color: #2a2a2a; box-shadow: 0 24px 50px -12px rgba(50,38,26,.3); white-space: nowrap; }
+  .msg.me { border-radius: 36px 36px 10px 36px; background: #2a2a2a; color: #f1ebe1; }
+  .msg .who { display: block; font: 700 20px "JetBrains Mono"; letter-spacing: 2px; color: #a06b98; margin-bottom: 8px; text-transform: uppercase; }
+  .msg.me .who { color: #4fb7bf; }
+  .card { position: absolute; left: 0; top: 0; border-radius: 40px; background: #f6f1e8; box-shadow: inset 0 3px 0 rgba(255,255,255,.6), 0 50px 80px -20px rgba(50,38,26,.35), 0 12px 24px rgba(50,38,26,.12); overflow: hidden; }
+  .card.dark { background: #232838; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="grain"></div></div>
+<script>
+"use strict";
+const W = 1080, H = 1920;
+const stage = document.getElementById("stage");
+const Q = new URLSearchParams(location.search);
+const CUT = Q.get("cut") || "long";
+const P = { clay: "#c9785f", sage: "#9aae95", blue: "#8ea3ba", sand: "#d8c7a8", plum: "#a698ad", mustard: "#d2b06f", cream: "#f1ebe1", ink: "#2a2a2a", night: "#1e2230", cyan: "#4fb7bf", magenta: "#a06b98" };
+
+/* ── Помощники ─────────────────────────────────────────────────────────── */
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const outCubic = (k) => 1 - Math.pow(1 - k, 3);
+const outQuint = (k) => 1 - Math.pow(1 - k, 5);
+const inCubic = (k) => k * k * k;
+const inOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+/** Пружина: перелёт и затухание — живое движение вместо линейного. */
+const spring = (k, f = 7, damp = 6) => (k <= 0 ? 0 : k >= 1.6 ? 1 : 1 - Math.exp(-damp * k) * Math.cos(f * k));
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function put(e, x, y, s = 1, r = 0, o = 1, extra = "") { e.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) rotate(${r}deg) scale(${s})${extra}`; e.style.opacity = o; }
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (c) => clamp(Math.round(c + (amt > 0 ? (255 - c) * amt : c * amt)), 0, 255);
+  // Шестнадцатеричный, а не rgb(): цвет потом снова осветляют и затемняют.
+  return "#" + [f(n >> 16), f((n >> 8) & 255), f(n & 255)].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+function pop(t, at, dist = 90) { const k = (t - at) / 0.75; const s = spring(k); return { k: clamp(k), y: (1 - s) * dist, s: lerp(0.9, 1, s), o: clamp(k * 3) }; }
+/** Падение с весом: ускорение, удар точно на ударе музыки, пружинистая посадка. */
+function fall(t, at, from = -900, len = 0.34) {
+  if (t < at - len) return { y: from, sq: 0, o: 0 };
+  if (t < at) { const k = (t - (at - len)) / len; return { y: lerp(from, 0, inCubic(k)), sq: -0.03, o: 1 }; }
+  const dt = t - at, w = Math.exp(-dt * 8) * Math.sin(dt * 26);
+  return { y: -Math.abs(w) * 16, sq: w * 0.06, o: 1 };
+}
+
+/* ── Удары (время ролика) ──────────────────────────────────────────────── */
+let BEATS = [], BIG = new Set();
+const nearBeat = (m) => BEATS.reduce((best, b) => (Math.abs(b - m) < Math.abs(best - m) ? b : best), BEATS[0]);
+
+/* ── Детали ────────────────────────────────────────────────────────────── */
+function solid(w, h, color, radius = 44, depth = 16) {
+  const d = el("div", "solid");
+  d.style.width = w + "px"; d.style.height = h + "px"; d.style.borderRadius = radius + "px";
+  d.innerHTML = `<div class="shadow" style="bottom:-${depth + 40}px"></div><div class="side" style="background:${shade(color, -0.22)};top:${depth}px;bottom:-${depth}px"></div><div class="face" style="background:linear-gradient(165deg, ${shade(color, 0.2)} 0%, ${color} 50%, ${shade(color, -0.06)} 100%)"></div>`;
+  d.face = d.querySelector(".face");
+  return d;
+}
+function ball(size, color) {
+  const b = el("div", "ball"); b.style.width = b.style.height = size + "px";
+  b.style.background = `radial-gradient(circle at 35% 30%, ${shade(color, 0.45)} 0%, ${color} 45%, ${shade(color, -0.25)} 100%)`;
+  b.style.boxShadow = `0 ${size * 0.25}px ${size * 0.4}px -${size * 0.1}px rgba(60,45,30,.3)`;
+  return b;
+}
+const pill = (w, h, color) => solid(w, h, color, h / 2, Math.round(h * 0.1));
+function headline(html, size, color = P.ink, align = "center") {
+  const h = el("div", "h1"); h.style.fontSize = size + "px"; h.style.color = color; h.style.textAlign = align;
+  h.innerHTML = html.split("<br>").map((line) => line.replace(/(<span[^>]*>)?([^<\s]+)(<\/span>)?/g, (m, open, word, close) => `<span class="w"><span>${open ?? ""}${word}${close ?? ""}</span></span>`)).join("<br>");
+  h.words = [...h.querySelectorAll(".w > span")];
+  return h;
+}
+function reveal(h, t, at, every = 0.1) { h.words.forEach((w, i) => { const k = prog(t, at + i * every, at + i * every + 0.6); w.style.transform = `translateY(${(1 - outQuint(k)) * 110}%)`; }); }
+function mono(text, cyan = false) { return el("div", "mono" + (cyan ? " cyan" : ""), "// " + text); }
+function typeMono(m, t, at, speed = 26) { const full = m.dataset.full ?? (m.dataset.full = m.textContent); const n = Math.floor(clamp((t - at) * speed, 0, full.length)); m.textContent = full.slice(0, n); m.style.opacity = n > 0 ? 1 : 0; }
+const IMG = (name) => `screens/${name}.png`;
+function phone(name, w = 600) { const p = el("div", "phone"); p.style.width = w + "px"; p.style.height = Math.round((w - 28) * 844 / 390) + 28 + "px"; p.innerHTML = `<div class="glass"><img src="${IMG(name)}"></div>`; return p; }
+function windowFrame(src, w, h, url = "") { const f = el("div", "window"); f.style.width = w + "px"; f.style.height = h + "px"; f.innerHTML = `<div class="bar2"><i></i><i></i><i></i>${url ? `<span>${url}</span>` : ""}</div><div class="view" style="background-image:url(${src})"></div>`; f.view = f.querySelector(".view"); return f; }
+function studio(s, kind = "") { const b = el("div", "studio " + kind); s.append(b); return b; }
+function msg(text, who, me = false) { return el("div", "msg" + (me ? " me" : ""), `<span class="who">${who}</span>${text}`); }
+function checkBadge(size = 220, color = P.sage) {
+  const c = solid(size, size, color, size / 2, 12);
+  c.face.insertAdjacentHTML("beforeend", `<svg viewBox="0 0 100 100" style="position:absolute;inset:22%"><path class="tick" d="M18 54 L42 76 L84 28" fill="none" stroke="#f6f1e8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="110" stroke-dashoffset="110"/></svg>`);
+  c.tick = c.querySelector(".tick");
+  return c;
+}
+/** Парящие формы: дальние размыты, ближние резкие — глубина как у объектива. */
+function floaters(s, seed, count = 7, palette = [P.blue, P.sand, P.mustard, P.sage, P.clay, P.plum]) {
+  const r = rng(seed);
+  return Array.from({ length: count }, (_, i) => {
+    const kind = i % 3, c = palette[i % palette.length], z = 0.45 + r() * 0.8;
+    const size = (120 + r() * 140) * z;
+    const e = kind === 0 ? ball(size, c) : kind === 1 ? solid(size, size, c, size * 0.26, 10) : pill(size * 1.6, size * 0.62, c);
+    if (z < 0.75) e.style.filter = `blur(${(0.75 - z) * 16}px)`;
+    s.append(e);
+    // Ни одна форма не садится в середину, на текст.
+    let x = r() * 1080; if (x > 300 && x < 780) x = x < 540 ? x - 260 : x + 260;
+    return { e, x, y: 150 + r() * 1650, z, r: (r() - 0.5) * 40, ph: r() * 6, vr: (r() - 0.5) * 8 };
+  });
+}
+function moveFloaters(list, t, appear = 1, push = 0) { list.forEach((f) => put(f.e, f.x + Math.sin(t * 0.5 + f.ph) * 26 * f.z, f.y + Math.cos(t * 0.6 + f.ph) * 22 * f.z - push * f.z * 60, 1, f.r + t * f.vr, appear)); }
+
+/* ── Кольцо Ноа (src/js/orb.js без случайностей и без дуги «думаю») ────── */
+const PAL = { listening: ["#5fd3a8", "#4fc3d8", "#7fe0b0"], thinking: ["#7c8cf0", "#9a7cf0", "#6fb0f0"], speaking: ["#e07cf0", "#b08cff", "#7cc8f5"] };
+const alpha = (c, a) => c + Math.round(clamp(a) * 255).toString(16).padStart(2, "0");
+const PARTS = (() => { const r = rng(42); return Array.from({ length: 26 }, (_, i) => ({ a: (i / 26) * Math.PI * 2, r: 60 + r() * 30, speed: 0.15 + r() * 0.3, size: 1 + r() * 1.8, phase: r() * Math.PI * 2 })); })();
+function orbCanvas(scale) { const c = el("canvas"); c.width = 360 * scale; c.height = 180 * scale; c.style.width = 360 * scale + "px"; c.style.height = 180 * scale + "px"; c.dataset.scale = scale; return c; }
+function drawOrb(c, t, mode, extra = 0) {
+  const ctx = c.getContext("2d"), sc = +c.dataset.scale;
+  ctx.setTransform(sc, 0, 0, sc, 0, 0); ctx.clearRect(0, 0, 360, 180);
+  const cx = 180, cy = 90;
+  const level = (mode === "speaking" ? 0.55 + Math.sin(t * 3.1) * 0.25 + Math.sin(t * 7.3) * 0.12 : 0.32 + Math.sin(t * 2) * 0.08) + extra;
+  const colors = PAL[mode];
+  const cloudR = 70 + level * 40, cloud = ctx.createRadialGradient(cx, cy, 4, cx, cy, cloudR);
+  cloud.addColorStop(0, alpha(colors[0], 0.28 + level * 0.2)); cloud.addColorStop(0.5, alpha(colors[1], 0.1)); cloud.addColorStop(1, "transparent");
+  ctx.fillStyle = cloud; ctx.beginPath(); ctx.arc(cx, cy, cloudR, 0, Math.PI * 2); ctx.fill();
+  for (const p of PARTS) {
+    const a = p.a + p.speed * 0.72 * t, radius = p.r + Math.sin(t * 1.5 + p.phase) * 6 + level * 18;
+    ctx.fillStyle = alpha(colors[2], 0.15 + Math.abs(Math.sin(t * 2 + p.phase)) * 0.35);
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius * 0.62, p.size, 0, Math.PI * 2); ctx.fill();
+  }
+  const spikes = mode === "speaking" ? 20 : 64, baseR = 34 + level * 10;
+  ctx.beginPath();
+  for (let i = 0; i <= spikes; i++) {
+    const a = (i / spikes) * Math.PI * 2;
+    const noise = mode === "speaking" ? Math.sin(a * 5 + t * 3) * 0.6 + Math.sin(a * 3 - t * 1.8) * 0.4 : Math.sin(a * 9 + t * 4) * 0.5 + Math.sin(a * 5 - t * 2.6) * 0.3 + Math.sin(a * 17 + t * 6) * 0.2;
+    const r = baseR + noise * ((mode === "speaking" ? 17 : 7) * level + 2);
+    i === 0 ? ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  ctx.closePath();
+  const ring = ctx.createLinearGradient(cx - baseR, cy, cx + baseR, cy);
+  ring.addColorStop(0, colors[0]); ring.addColorStop(0.5, colors[1]); ring.addColorStop(1, colors[2]);
+  ctx.strokeStyle = ring; ctx.lineWidth = 2.2; ctx.shadowColor = colors[1]; ctx.shadowBlur = 18 + level * 20; ctx.stroke(); ctx.shadowBlur = 0;
+}
+function noaChip(size) { const c = el("div", "chip"); c.style.width = c.style.height = size + "px"; const cv = orbCanvas(size / 205); c.append(cv); c.canvas = cv; return c; }
+
+/* ── Сцены: SCENES[name](root, d, x) → update(t). x.bt(k) — k-й удар сцены. ── */
+const SCENES = {};
+
+SCENES.hook = (s, d, x) => {
+  studio(s);
+  const fl = floaters(s, 5, 8);
+  const label = mono("NOAH · учёба с ИИ"); s.append(label);
+  const h = headline(`Чему ты<br>хочешь<br><span class="muted">научиться?</span>`, 136); s.append(h);
+  const chip = noaChip(190); s.append(chip);
+  return (t) => {
+    moveFloaters(fl, t, clamp(t * 2), t * 0.2);
+    typeMono(label, t, 0.1); put(label, 540, 470);
+    reveal(h, t, x.vo - 0.05, 0.2); put(h, 540, 830 + Math.sin(t * 1.1) * 5, 1 + t * 0.01);
+    const c = pop(t, x.bt(1) - 0.1); drawOrb(chip.canvas, t, "listening", 0.06); put(chip, 540, 1290 + c.y, c.s * (1 + Math.sin(t * 2.2) * 0.012), 0, c.o);
+  };
+};
+
+SCENES.logo = (s, d, x) => {
+  studio(s);
+  const fl = floaters(s, 11, 6);
+  const letters = ["N", "O", "A", "H"].map((ch, i) => {
+    const c = solid(210, 250, [P.clay, P.sage, P.blue, P.mustard][i], 52, 20);
+    c.face.insertAdjacentHTML("beforeend", `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 160px 'Exo 2';color:#f6f1e8;text-shadow:0 4px 0 rgba(0,0,0,.08)">${ch}</div>`);
+    s.append(c); return c;
+  });
+  const label = mono("учит чему угодно"); s.append(label);
+  const label2 = mono("помогает на компьютере", true); s.append(label2);
+  const h = headline(`Это — Ноа.`, 110); s.append(h);
+  const first = x.opt.letterAt ?? 2;
+  return (t) => {
+    moveFloaters(fl, t, 1, 0);
+    letters.forEach((c, i) => {
+      const at = x.bt(first + i), f = fall(t, at, -1300);
+      const lift = inCubic(prog(t, d - 0.5, d)) * -40;
+      put(c, 165 + i * 250, 880 + f.y + lift + Math.sin(t * 2 + i) * 4, 1, [-3, 2, -2, 3][i] * Math.exp(-Math.max(0, t - at) * 1.5), f.o, ` scale(${1 + f.sq},${1 - f.sq})`);
+    });
+    reveal(h, t, x.opt.titleAt ?? x.vo - 0.05, 0.15); put(h, 540, 420);
+    typeMono(label, t, x.bt(first + 4)); put(label, 540, 1260);
+    typeMono(label2, t, x.bt(first + 5)); put(label2, 540, 1320);
+  };
+};
+
+const GOALS = [["Огород на балконе", P.sage, "6 тем"], ["Английский к отпуску", P.blue, "5 тем"], ["Python с нуля", P.sand, "8 тем"], ["Антибиотики к аттестации", P.clay, "5 тем"], ["Матанализ к сессии", P.plum, "7 тем"], ["Почему светят звёзды", P.mustard, "3 темы"]];
+SCENES.goals = (s, d, x) => {
+  studio(s);
+  const list = GOALS.slice(0, x.opt.count ?? 6);
+  const label = mono("любая цель"); s.append(label);
+  const h = headline(`Любая цель —<br><span class="muted">свой курс</span>`, 104); s.append(h);
+  const tiles = list.map(([name, c, meta]) => {
+    const t = solid(900, 150, c, 40, 14);
+    t.face.insertAdjacentHTML("beforeend", `<div class="label"><span class="dot" style="background:${shade(c, -0.35)}"></span>${name}</div><div class="meta">${meta}</div><div class="bar"><i></i></div>`);
+    t.bar = t.querySelector(".bar i"); s.append(t); return t;
+  });
+  const n = tiles.length, top = 1230 - (n - 1) * 95;
+  const per = x.opt.every ?? 1;
+  return (t) => {
+    typeMono(label, t, 0.05); put(label, 540, top - 520);
+    reveal(h, t, 0.0, 0.12); put(h, 540, top - 350);
+    tiles.forEach((tile, i) => {
+      const at = x.bt(i * per), f = fall(t, at, -1500);
+      put(tile, 540 + [0, -18, 14, -10, 16, -6][i] + Math.sin(t * 1.4 + i * 0.8) * 3, top + i * 190 + f.y, 1, [-1.2, 1, -0.6, 1.4, -0.8, 0.5][i], f.o, ` scale(${1 + f.sq},${1 - f.sq})`);
+      tile.bar.style.width = `${outCubic(prog(t, at + 0.25, at + 1.6)) * 100}%`;
+    });
+  };
+};
+
+SCENES.build = (s, d, x) => {
+  studio(s);
+  const label = mono("скажи цель"); s.append(label);
+  const ask = msg("Хочу томаты на балконе", "ты", true); s.append(ask);
+  const topics = [["Свет и место", P.clay], ["Грунт и горшки", P.blue], ["Томаты черри", P.sage], ["Полив", P.mustard], ["Вредители", P.plum], ["Урожай", P.sand]];
+  const tiles = topics.map(([name, c], i) => { const t = solid(480, 110, c, 30, 12); t.face.insertAdjacentHTML("beforeend", `<div class="label" style="font-size:36px;left:34px"><span style="font:700 22px 'JetBrains Mono';opacity:.55;margin-right:14px">0${i + 1}</span>${name}</div>`); s.append(t); return t; });
+  const ph = phone("phone-course", 500); s.append(ph);
+  const done = mono("курс готов · 6 тем", true); s.append(done);
+  const h = headline(`Уроки, карточки,<br><span class="muted">задачи и экзамен</span>`, 70); s.append(h);
+  const step = x.opt.half ? 0.5 : 1;
+  const beatAt = (i) => x.bt(1) + i * step * (x.bt(2) - x.bt(1));
+  const end = beatAt(topics.length);
+  return (t) => {
+    typeMono(label, t, 0.0); put(label, 540, 190);
+    const a = pop(t, 0.05); put(ask, 620, 300 + a.y, a.s, -1, a.o);
+    const slide = inOut(prog(t, end - 0.1, end + 0.6));
+    tiles.forEach((tile, i) => { const f = fall(t, beatAt(i), -1500); put(tile, lerp(540, 285, slide), 1520 - i * 128 + f.y, lerp(1, 0.94, slide), [-1, 0.8, -0.6, 1, -0.8, 0.6][i], f.o, ` scale(${1 + f.sq},${1 - f.sq})`); });
+    const p = spring((t - end) / 0.9); put(ph, lerp(1500, 770, p), 1060 + Math.sin(t * 1.3) * 7, 1, lerp(14, 4, p), t > end ? 1 : 0);
+    typeMono(done, t, end + 0.6); put(done, 800, 440);
+    reveal(h, t, end + 0.3, 0.12); put(h, 540, 1730);
+  };
+};
+
+SCENES.lesson = (s, d, x) => {
+  studio(s, "night");
+  const glow = el("div", "abs"); glow.style.cssText = "width:1300px;height:1300px;border-radius:50%;background:radial-gradient(circle, rgba(166,152,173,.22), transparent 62%)"; s.append(glow);
+  const label = mono("урок", true); s.append(label);
+  const h = headline(`Объясняет<br><span style="color:#8d8aa0">голосом</span>`, 100, "#f1ebe1", "left"); s.append(h);
+  const ph = phone("phone-lesson", 640); s.append(ph);
+  const ask = msg("А зачем пасынки удаляют?", "ты"); s.append(ask);
+  const chip = noaChip(250); s.append(chip);
+  return (t) => {
+    put(glow, 640, 1100, 1 + Math.sin(t * 2) * 0.03);
+    typeMono(label, t, 0.0); put(label, 200, 170);
+    reveal(h, t, 0.05, 0.12); put(h, 340, 300);
+    const p = spring(t / 0.9); put(ph, lerp(-200, 430, p), 1160 + Math.sin(t * 1.3) * 7, 1, lerp(-12, -4, p));
+    const a = pop(t, x.bt(1) - 0.1); put(ask, 720, 600 + a.y, a.s, -1, a.o);
+    const c = pop(t, 0.25); drawOrb(chip.canvas, t, "speaking", 0.1); put(chip, 850, 1560 + c.y, c.s * (1 + Math.sin(t * 6) * 0.015), 0, c.o);
+  };
+};
+SCENES.quiz = (s, d, x) => {
+  studio(s);
+  const fl = floaters(s, 31, 4);
+  const label = mono("проверка"); s.append(label);
+  const h = headline(`Проверит<br><span class="muted">и разберёт</span>`, 100, P.ink, "left"); s.append(h);
+  const ph = phone("phone-check-right", 640); s.append(ph);
+  const ok = checkBadge(230); s.append(ok);
+  const okLabel = mono("верно", true); s.append(okLabel);
+  const at = x.bt(x.opt.checkAt ?? 1) + (x.opt.checkAt === 0 ? 0.0 : 0);
+  return (t) => {
+    moveFloaters(fl, t, 1, 0);
+    typeMono(label, t, 0.0); put(label, 220, 170);
+    reveal(h, t, 0.05, 0.12); put(h, 340, 300);
+    const p = spring((t + 0.1) / 0.9); put(ph, 560, lerp(2300, 1170, p) + Math.sin(t * 1.2) * 7, 1, lerp(8, -3, p));
+    const k = spring((t - at) / 0.7); put(ok, 860, 640, k, -8, t >= at ? 1 : 0);
+    ok.tick.style.strokeDashoffset = 110 - outCubic(prog(t, at + 0.15, at + 0.5)) * 110;
+    typeMono(okLabel, t, at + 0.3); put(okLabel, 860, 800);
+  };
+};
+SCENES.cards = (s, d, x) => {
+  studio(s);
+  const label = mono("повторение"); s.append(label);
+  const h = headline(`Напомнит<br><span class="muted">повторить</span>`, 100, P.ink, "left"); s.append(h);
+  const ph = phone("phone-review", 560); s.append(ph);
+  const cards = [["Зачем удалять пасынки?", "Чтобы силы шли в плоды", P.sage], ["Как сказать «у прохода»?", "Aisle seat", P.blue], ["Что такое сверхновая?", "Взрыв огромной звезды", P.plum]].map(([q, a, c]) => {
+    const card = el("div", "abs"); card.style.cssText += "width:520px;height:230px;perspective:1600px";
+    const inner = el("div", "abs"); inner.style.cssText += "width:520px;height:230px;transform-style:preserve-3d"; card.append(inner);
+    const face = (text, back) => { const f = el("div", "abs"); f.style.cssText += `width:520px;height:230px;border-radius:34px;background:${back ? P.ink : `linear-gradient(165deg, ${shade(c, 0.25)}, ${c})`};color:${back ? "#f1ebe1" : P.ink};display:flex;flex-direction:column;justify-content:center;padding:0 40px;font:800 38px/1.18 Manrope;backface-visibility:hidden;box-shadow:inset 0 3px 0 rgba(255,255,255,.3),0 30px 50px -14px rgba(50,38,26,.35);${back ? "transform:rotateY(180deg)" : ""}`; f.innerHTML = `<span style="font:700 20px 'JetBrains Mono';letter-spacing:2px;opacity:.6;margin-bottom:10px">${back ? "// ОТВЕТ" : "// ВОПРОС"}</span>${text}`; return f; };
+    inner.append(face(q, false), face(a, true)); card.inner = inner; s.append(card); return card;
+  });
+  const every = x.beats >= 7 ? 2 : 1;
+  return (t) => {
+    typeMono(label, t, 0.0); put(label, 240, 170);
+    reveal(h, t, 0.05, 0.12); put(h, 340, 300);
+    const p = spring((t + 0.1) / 0.9); put(ph, 320, lerp(2300, 1200, p) + Math.sin(t * 1.2) * 7, 1, -5);
+    cards.forEach((c, i) => {
+      const a = pop(t, 0.2 + i * 0.15); put(c, 770, 780 + i * 290 + a.y + Math.sin(t * 1.6 + i) * 6, a.s * 0.96, [4, -3, 3][i], a.o);
+      const at = x.bt(1 + i * every); c.inner.style.transform = `rotateY(${spring((t - at) / 0.8, 6, 5) * 180}deg)`;
+    });
+  };
+};
+
+SCENES.media = (s, d, x) => {
+  studio(s);
+  const label = mono("к каждому уроку"); s.append(label);
+  const h = headline(`Схемы, истории<br><span class="muted">и путеводители</span>`, 82); s.append(h);
+  const scheme = el("div", "card dark"); scheme.style.width = "940px"; scheme.style.height = "420px"; s.append(scheme);
+  const nodes = ["Свет", "Полив", "Урожай"].map((name) => { const n = el("div", "abs"); n.style.cssText += "width:220px;height:150px;border-radius:24px;border:3px solid #4fb7bf;background:rgba(79,183,191,.08);box-shadow:0 0 30px rgba(79,183,191,.35);display:flex;align-items:center;justify-content:center;color:#d8eeee;font:700 34px Manrope"; n.textContent = name; scheme.append(n); return n; });
+  const links = [0, 1].map(() => { const a = el("div", "abs"); a.innerHTML = `<svg width="100" height="40" viewBox="0 0 100 40"><path d="M4 20 H82" stroke="#a06b98" stroke-width="5" stroke-dasharray="10 8"/><path d="M74 8 L92 20 L74 32" fill="none" stroke="#a06b98" stroke-width="5" stroke-linejoin="round"/></svg>`; scheme.append(a); return a; });
+  const t1 = mono("ролик-схема", true); scheme.append(t1);
+  const drama = el("div", "card"); drama.style.width = "940px"; drama.style.height = "440px"; s.append(drama);
+  const lines = [["Почему листья желтеют?", P.clay], ["Скорее всего, перелив.", P.blue], ["Проверь дренаж в горшке.", P.sage]].map(([text, c]) => { const r = el("div", "abs"); r.style.cssText += `display:flex;align-items:center;gap:22px;font:700 36px Manrope;color:${P.ink};white-space:nowrap`; r.innerHTML = `<span style="width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 35% 30%, ${shade(c, 0.4)}, ${c})"></span>${text}`; drama.append(r); return r; });
+  const wave = el("div", "abs"); const bars = Array.from({ length: 34 }, () => { const b = el("i"); b.style.cssText = "display:inline-block;width:12px;margin:0 5px;border-radius:6px;background:#a06b98;vertical-align:middle"; wave.append(b); return b; }); drama.append(wave);
+  const t2 = mono("аудиодрама"); drama.append(t2);
+  const guide = el("div", "card"); guide.style.width = "940px"; guide.style.height = "420px"; guide.style.background = "#e7ecef"; s.append(guide);
+  const g = phone("phone-guide", 300); guide.append(g);
+  const gt = headline(`Путеводители<br><span class="muted">с картинками</span>`, 52, P.ink, "left"); guide.append(gt);
+  const t3 = mono("для души"); guide.append(t3);
+  const steps = x.beats >= 8 ? [1, 3, 5] : [0, 2, 3];
+  return (t) => {
+    typeMono(label, t, 0.0); put(label, 540, 140);
+    reveal(h, t, 0.05, 0.12); put(h, 540, 270);
+    const at = steps.map((k) => x.bt(k));
+    [scheme, drama, guide].forEach((c, i) => { const k = spring((t - at[i]) / 0.9); put(c, 540, [690, 1150, 1610][i] + (1 - k) * 260 + Math.sin(t * 1.1 + i) * 5, lerp(0.9, 1, clamp(k)), [-1.2, 1, -0.8][i], t > at[i] ? 1 : 0); });
+    nodes.forEach((n, i) => { const k = pop(t, at[0] + 0.2 + i * 0.25, 50); put(n, 170 + i * 300, 230 + k.y, k.s, 0, k.o); });
+    links.forEach((l, i) => { const k = prog(t, at[0] + 0.4 + i * 0.25, at[0] + 0.65 + i * 0.25); put(l, 320 + i * 300, 230, 1, 0, k > 0 ? 1 : 0); l.style.clipPath = `inset(0 ${100 - k * 100}% 0 0)`; });
+    typeMono(t1, t, at[0] + 0.1); put(t1, 160, 50);
+    lines.forEach((r, i) => { const k = pop(t, at[1] + 0.2 + i * 0.3, 40); r.style.transform = `translate(60px, ${110 + i * 92 + k.y}px)`; r.style.opacity = k.o; });
+    bars.forEach((b, i) => { b.style.height = `${10 + Math.abs(Math.sin(t * 5 + i * 0.7) * Math.sin(t * 2.3 + i * 0.3)) * 60}px`; });
+    put(wave, 470, 390, 1, 0, prog(t, at[1] + 0.4, at[1] + 0.8));
+    typeMono(t2, t, at[1] + 0.1); put(t2, 150, 50);
+    put(g, 200, 330 + Math.sin(t * 1.4) * 6, 1, -4); reveal(gt, t, at[2] + 0.25, 0.12); put(gt, 600, 210); typeMono(t3, t, at[2] + 0.1); put(t3, 800, 50);
+  };
+};
+
+SCENES.interview = (s, d, x) => {
+  studio(s);
+  const label = mono("собеседование"); s.append(label);
+  const h = headline(`Погоняет<br><span class="muted">к экзамену</span>`, 100, P.ink, "left"); s.append(h);
+  const ph = phone("phone-interview", 540); s.append(ph);
+  const q = msg("Что скажешь на стойке<br>регистрации?", "ноа"); s.append(q);
+  const a = msg("I'd like to check in, please!", "ты", true); s.append(a);
+  const ok = checkBadge(170); s.append(ok);
+  const chip = noaChip(210); s.append(chip);
+  const k1 = 1, k2 = x.beats >= 6 ? 3 : 2, k3 = x.beats >= 6 ? 5 : 3;
+  return (t) => {
+    typeMono(label, t, 0.0); put(label, 260, 170);
+    reveal(h, t, 0.05, 0.12); put(h, 340, 300);
+    const p = spring((t + 0.1) / 0.9); put(ph, 320, lerp(2300, 1280, p) + Math.sin(t * 1.2) * 7, 1, -4);
+    const qa = pop(t, x.bt(k1) - 0.1); put(q, 640, 640 + qa.y, qa.s, -1, qa.o);
+    const aa = pop(t, x.bt(k2) - 0.1); put(a, 560, 900 + aa.y, aa.s, 1, aa.o);
+    const at = x.bt(k3); put(ok, 900, 1060, spring((t - at) / 0.7), -6, t >= at ? 1 : 0); ok.tick.style.strokeDashoffset = 110 - outCubic(prog(t, at + 0.15, at + 0.5)) * 110;
+    drawOrb(chip.canvas, t, t < x.bt(k2) ? "speaking" : "listening"); const c = pop(t, 0.3); put(chip, 860, 1560 + c.y, c.s, 0, c.o);
+  };
+};
+
+SCENES.assistant = (s, d, x) => {
+  studio(s, "night");
+  const glow = el("div", "abs"); glow.style.cssText = "width:1400px;height:1400px;border-radius:50%;background:radial-gradient(circle, rgba(142,163,186,.2), transparent 62%)"; s.append(glow);
+  const label = mono("а ещё — на компьютере", true); s.append(label);
+  const h = headline(`Голосовой<br><span style="color:#8d8aa0">помощник</span>`, 100, "#f1ebe1", "left"); s.append(h);
+  const win = windowFrame(IMG("desk-learning"), 1000, 650); s.append(win);
+  const chip = noaChip(200); s.append(chip);
+  const asks = x.opt.asks ?? ["Ноа, открой обучение", "Поставь таймер на 25 минут", "Найди рецепт пиццы", "Что такое изостазия?"];
+  const bubbles = asks.map((text) => { const m = msg(text, "ты", true); m.style.background = "#f1ebe1"; m.style.color = P.ink; m.querySelector(".who").style.color = P.magenta; s.append(m); return m; });
+  const timer = solid(340, 170, P.clay, 40, 16); timer.face.insertAdjacentHTML("beforeend", `<div class="tm" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 86px 'Exo 2';color:#f6f1e8;letter-spacing:2px">25:00</div>`); const tm = timer.querySelector(".tm"); s.append(timer);
+  const video = el("div", "card"); video.style.width = "560px"; video.style.height = "300px"; video.innerHTML = `<div style="position:absolute;inset:0;background:linear-gradient(135deg,#d9a689,#c9785f 60%,#a85e48)"></div><div style="position:absolute;left:50%;top:44%;width:96px;height:96px;margin:-48px;border-radius:50%;background:rgba(246,241,232,.9)"><div style="position:absolute;left:38px;top:28px;border-left:34px solid #a85e48;border-top:20px solid transparent;border-bottom:20px solid transparent"></div></div><div style="position:absolute;left:30px;bottom:24px;font:800 34px Manrope;color:#f6f1e8">Пицца как в Неаполе</div><div style="position:absolute;right:28px;top:22px;font:700 22px 'JetBrains Mono';color:#f6f1e8;opacity:.85">12:04</div>`; s.append(video);
+  const pop2 = el("div", "abs"); pop2.style.cssText += `width:830px;height:520px;border-radius:14px;background:url(${IMG("popup-crop")}) center/cover;box-shadow:0 50px 90px -20px rgba(0,0,0,.55)`; s.append(pop2);
+  const first = x.opt.first ?? 1, n = asks.length, per = x.opt.per ?? Math.max(2, Math.floor((x.beats - first) / n));
+  const at = (i) => x.bt(first + i * per);
+  const idx = (name) => asks.findIndex((a) => a.includes(name));
+  return (t) => {
+    put(glow, 540, 900, 1 + Math.sin(t * 2) * 0.03);
+    typeMono(label, t, 0.0); put(label, 330, 170);
+    reveal(h, t, 0.05, 0.12); put(h, 340, 300);
+    const w = spring((t + 0.05) / 1.0); put(win, 540, lerp(2200, 900, w) + Math.sin(t * 1.1) * 6, 1, -1.5);
+    drawOrb(chip.canvas, t, "listening"); const c = pop(t, 0.2); put(chip, 170, 1680 + c.y, c.s, 0, c.o);
+    bubbles.forEach((b, i) => { const a = pop(t, at(i) - 0.1, 60), out = i < n - 1 ? prog(t, at(i + 1) - 0.25, at(i + 1) - 0.05) : 0; put(b, 640, 1620 + a.y - out * 60, a.s, i % 2 ? 1 : -1, a.o * (1 - out)); });
+    const it = idx("таймер"), iv = idx("пицц"), ip = idx("изостаз");
+    if (it >= 0) { const f = fall(t, at(it) + 0.33, -1200); const gone = prog(t, at(it + 1) - 0.25, at(it + 1)); put(timer, 800, 1290 + f.y, 1, -4, f.o * (1 - gone), ` scale(${1 + f.sq},${1 - f.sq})`); const secs = Math.max(0, Math.floor((t - at(it) - 0.33) * 4)); tm.textContent = secs ? `24:${String(60 - (secs % 60)).padStart(2, "0")}` : "25:00"; } else timer.style.opacity = 0;
+    if (iv >= 0) { const k = pop(t, at(iv) + 0.3), gone = prog(t, at(iv + 1) - 0.25, at(iv + 1)); put(video, 700, 1300 + k.y, k.s, 3, k.o * (1 - gone)); } else video.style.opacity = 0;
+    if (ip >= 0) { const k = spring((t - at(ip) - 0.3) / 0.9); put(pop2, 540, lerp(2400, 1250, k), 1, -2, t > at(ip) + 0.3 ? 1 : 0); } else pop2.style.opacity = 0;
+  };
+};
+
+SCENES.everywhere = (s, d, x) => {
+  studio(s);
+  const fl = floaters(s, 41, 5);
+  const label = mono("один аккаунт"); s.append(label);
+  const h = headline(`Телефон, компьютер,<br><span class="muted">браузер</span>`, 84); s.append(h);
+  const lap = windowFrame(IMG("desk-learning"), 920, 600); s.append(lap);
+  const site = windowFrame(IMG("site-d-full"), 540, 720, "noahlab.ru/learn"); s.append(site);
+  const ph = phone("phone-home", 340); s.append(ph);
+  const dots = Array.from({ length: 4 }, () => { const d = el("div", "abs"); d.style.cssText += `width:20px;height:20px;border-radius:50%;background:${P.cyan};box-shadow:0 0 0 8px rgba(79,183,191,.2)`; s.append(d); return d; });
+  return (t) => {
+    moveFloaters(fl, t, 1, 0);
+    typeMono(label, t, 0.0); put(label, 540, 160);
+    reveal(h, t, 0.05, 0.12); put(h, 540, 290);
+    const a = spring((t - x.bt(0) + 0.1) / 0.9), b = spring((t - x.bt(1) + 0.1) / 0.9), c = spring((t - x.bt(3) + 0.1) / 0.9);
+    put(lap, 540, lerp(-500, 760, a) + Math.sin(t) * 5, 1, -1.2, 1);
+    put(site, lerp(1600, 760, b), 1420 + Math.sin(t * 1.2) * 6, 1, 2, t > x.bt(1) - 0.1 ? 1 : 0);
+    site.view.style.backgroundPosition = `0 ${-clamp((t - x.bt(3)) / Math.max(1, d - x.bt(3))) * 2600}px`;
+    put(ph, lerp(-400, 270, c), 1440 + Math.sin(t * 1.3 + 1) * 6, 1, -4, t > x.bt(3) - 0.1 ? 1 : 0);
+    const path = [[270, 1200], [540, 1000], [760, 1110]];
+    dots.forEach((dd, i) => { const k = (t * 0.7 + i / 4) % 1, seg = k < 0.5 ? 0 : 1, kk = (k % 0.5) * 2; const [x1, y1] = path[seg], [x2, y2] = path[seg + 1]; put(dd, lerp(x1, x2, inOut(kk)), lerp(y1, y2, inOut(kk)) - Math.sin(kk * Math.PI) * 60, 1, 0, prog(t, x.bt(3) + 0.3, x.bt(3) + 0.7)); });
+  };
+};
+
+SCENES.words = (s, d, x) => {
+  const list = [["Голосом.", P.sage, "слушай"], ["Схемой.", P.blue, "смотри"], ["Историей.", P.clay, "запоминай"], ["Практикой.", P.plum, "делай"]];
+  const marks = x.opt.at ?? [0, 2, 4, 6];
+  const panes = list.map(([word, c, hint], i) => {
+    const pane = el("div", "scene"); s.append(pane);
+    const bg = el("div", "studio tint"); bg.style.setProperty("--tint", `radial-gradient(ellipse 120% 70% at 50% 20%, ${shade(c, 0.25)} 0%, ${c} 60%, ${shade(c, -0.12)} 100%)`); pane.append(bg);
+    const shape = i % 2 ? ball(380, shade(c, 0.55)) : solid(380, 380, shade(c, 0.5), 100, 24); pane.append(shape);
+    const h = headline(word, 150, "#f6f1e8"); pane.append(h);
+    const m = mono(hint); m.style.color = "rgba(246,241,232,.75)"; pane.append(m);
+    return { pane, shape, h, m };
+  });
+  return (t) => panes.forEach((p, i) => {
+    const a = x.bt(marks[i]), b = i === panes.length - 1 ? d + 1 : x.bt(marks[i + 1]), on = t >= a - 0.3 && t < b;
+    p.pane.style.display = on ? "block" : "none"; if (!on) return;
+    const lt = t - a, enter = i === 0 ? 1 : outQuint(prog(t, a - 0.3, a));
+    p.pane.style.zIndex = 10 + i;
+    p.pane.style.clipPath = `circle(${enter * 150}% at 50% 62%)`;
+    put(p.shape, 540, 1260 + Math.sin(lt * 1.5) * 12, spring((lt + 0.1) / 0.8) * (1 + lt * 0.03), lt * 8 + (i % 2 ? 0 : 12), 1);
+    reveal(p.h, lt, -0.1, 0.1); put(p.h, 540, 720, 1 + lt * 0.02);
+    typeMono(p.m, lt, 0.1); put(p.m, 540, 880);
+  });
+};
+
+SCENES.final = (s, d, x) => {
+  const back = el("div", "abs"); back.style.cssText = "position:absolute;inset:-80px;background:radial-gradient(ellipse 110% 70% at 50% 40%, #2a2f42 0%, #1a1d28 58%, #121419 100%)"; s.append(back);
+  const glow = el("div", "abs"); glow.style.cssText = "width:1100px;height:1100px;border-radius:50%;background:radial-gradient(circle, rgba(154,124,240,.2), transparent 62%)"; s.append(glow);
+  const cv = orbCanvas(3.3); s.append(cv);
+  const name = el("div", "abs"); name.style.cssText += "font:700 176px 'Exo 2';letter-spacing:22px;color:#f1ece3;white-space:nowrap"; name.textContent = "NOAH"; s.append(name);
+  const line = el("div", "abs"); line.style.cssText += "font:600 52px Manrope;color:#a9a5b8;letter-spacing:-1px;white-space:nowrap"; line.textContent = "Учись чему угодно"; s.append(line);
+  const devices = mono("телефон · компьютер · браузер"); devices.style.color = "#8d8aa0"; s.append(devices);
+  const url = mono("noahlab.ru/learn", true); url.style.fontSize = "40px"; url.style.letterSpacing = "4px"; url.style.textTransform = "none"; s.append(url);
+  const textAt = x.opt.textAt;
+  return (t) => {
+    const breath = 1 + Math.sin(t * 1.5) * 0.05;
+    const appear = outCubic(prog(t, 0, 1.2));
+    const hit = t >= textAt ? Math.exp(-(t - textAt) * 2.5) : 0;
+    drawOrb(cv, t, "thinking", Math.sin(t * 1.5) * 0.06 + hit * 0.35);
+    put(cv, 540, 800, (0.86 + appear * 0.14) * breath + hit * 0.06, 0, appear);
+    put(glow, 540, 800, breath * (1 + hit * 0.2), 0, appear);
+    const n = prog(t, textAt, textAt + 0.8), l = prog(t, textAt + 0.4, textAt + 1.2);
+    put(name, 551, 1240 + (1 - outQuint(n)) * 50, 1, 0, n);
+    put(line, 540, 1380 + (1 - outQuint(l)) * 30, 1, 0, l);
+    typeMono(devices, t, textAt + 0.7, 30); put(devices, 540, 1470);
+    typeMono(url, t, textAt + 1.3, 22); put(url, 540, 1560);
+    s.style.opacity = 1 - prog(t, d - 1.2, d);
+  };
+};
+
+/** Подсцены подряд, каждая — со своего удара; новая въезжает снизу. */
+function sequence(parts) {
+  return (s, d, x) => {
+    let beat = 0;
+    const items = parts.map(([name, beats, opt], i) => {
+      const pane = el("div", "scene"); s.append(pane);
+      const a = x.bt(beat), b = i === parts.length - 1 ? d : x.bt(beat + beats);
+      const base = beat;
+      const sub = { ...x, opt: opt ?? {}, beats, bt: (k) => x.bt(base + k) - a, vo: x.vo - a };
+      const it = { pane, a, b, update: SCENES[name](pane, b - a, sub) };
+      beat += beats; return it;
+    });
+    return (t) => items.forEach((it, i) => {
+      const on = t >= it.a - 0.3 && t < it.b;
+      it.pane.style.display = on ? "block" : "none"; if (!on) return;
+      const k = i === 0 ? 1 : outQuint(prog(t, it.a - 0.3, it.a + 0.05));
+      it.pane.style.zIndex = 10 + i;
+      it.pane.style.clipPath = `inset(${(1 - k) * 100}% 0 0 0 round ${(1 - k) * 80}px)`;
+      it.update(Math.max(0, t - it.a));
+    });
+  };
+}
+SCENES.learn = sequence([["lesson", 3], ["quiz", 6], ["cards", 7]]);
+
+/* ── Монтаж: [сцена, начало, конец (с ролика, по ударам), вход, параметры, голос] ──
+   Вход: grow — круг из центра, push — снизу, cut — на ударе. */
+const TIMELINES = {
+  long: [
+    ["hook", 0, 2.66, null, {}, 0.4],
+    ["logo", 2.66, 5.33, "push", { letterAt: 0, titleAt: 0.1 }, null],
+    ["goals", 5.33, 10.66, "grow", { every: 1 }, 5.6],
+    ["build", 10.66, 16.0, "push", {}, 10.9],
+    ["lesson", 16.0, 18.66, "grow", {}, 16.3],
+    ["cards", 18.66, 21.59, "push", {}, null],
+    ["interview", 21.59, 24.26, "push", {}, null],
+    ["quiz", 24.26, 26.93, "cut", { checkAt: 0 }, null],
+    ["media", 26.93, 32.27, "push", {}, 27.2],
+    ["assistant", 32.27, 40.27, "grow", { first: 3, per: 2 }, 32.6],
+    ["words", 40.27, 45.6, "grow", { at: [0, 2, 4, 6] }, null],
+    ["final", 45.6, 56.27, "grow", { textAt: 0.67 }, 46.1],
+  ],
+  reels: [
+    ["hook", 0, 2.66, null, {}, 0.4],
+    ["logo", 2.66, 5.33, "push", { letterAt: 0, titleAt: 0.1 }, null],
+    ["goals", 5.33, 9.33, "grow", { count: 4, every: 1 }, 5.6],
+    ["build", 9.33, 13.33, "push", { half: true }, 9.6],
+    ["lesson", 13.33, 16.0, "grow", {}, 13.6],
+    ["quiz", 16.0, 18.67, "cut", { checkAt: 0 }, null],
+    ["cards", 18.67, 21.34, "push", {}, null],
+    ["interview", 21.34, 24.01, "push", {}, null],
+    ["media", 24.01, 29.33, "push", {}, 24.3],
+    ["assistant", 29.33, 34.66, "grow", { asks: ["Ноа, открой обучение", "Что такое изостазия?"], first: 4, per: 2 }, 29.6],
+    ["final", 34.66, 40.0, "grow", { textAt: 0.67 }, 35.0],
+  ],
+};
+let TL = [];
+const live = new Map();
+function sceneAt(i) {
+  if (!live.has(i)) {
+    const row = TL[i], [name, , , , opt, vo] = row;
+    const root = el("div", "scene"); stage.insertBefore(root, document.getElementById("grain"));
+    const local = BEATS.filter((v) => v >= row.a - 0.05 && v < row.b + 0.05).map((v) => v - row.a);
+    const ctx = { a: row.a, d: row.b - row.a, opt, vo: vo != null ? vo - row.a : 0, beats: local.length, bt: (k) => (k < local.length ? local[k] : row.b - row.a + (k - local.length + 1) * 0.6667) };
+    live.set(i, { root, update: SCENES[name](root, row.b - row.a, ctx) });
+  }
+  return live.get(i);
+}
+/** Камера: наезд, дыхание, мягкий толчок на ударе, сильнее — на больших. */
+function camera(root, t, a, b) {
+  const k = (t - a) / (b - a);
+  let kick = 0;
+  for (const bt of BEATS) { if (bt > t) break; const dt = t - bt; if (dt < 0.8) kick += Math.exp(-dt * 9) * (BIG.has(bt) ? 0.016 : 0.0045); }
+  root.style.transform = `translate(${Math.sin(t * 0.6) * 5}px, ${Math.cos(t * 0.45) * 5}px) scale(${1 + 0.03 * k + kick}) rotate(${Math.sin(t * 0.35) * 0.2}deg)`;
+}
+
+window.render = (t) => {
+  document.getElementById("grain").style.transform = `translate(${(Math.floor(t * 24) * 37) % 60 - 30}px, ${(Math.floor(t * 24) * 53) % 60 - 30}px)`;
+  for (let i = 0; i < TL.length; i++) {
+    const row = TL[i];
+    const enterLen = row[3] === "push" || row[3] === "grow" ? 0.42 : 0;
+    const visible = t >= row.a - enterLen && t < row.b;
+    if (visible) {
+      const sc = sceneAt(i); sc.update(Math.max(0, t - row.a)); camera(sc.root, t, row.a, row.b);
+      sc.root.style.zIndex = 10 + i;
+      const k = enterLen ? outQuint(prog(t, row.a - enterLen, row.a)) : 1;
+      if (row[3] === "push") sc.root.style.clipPath = k < 1 ? `inset(${(1 - k) * 100}% 0 0 0 round ${(1 - k) * 90}px)` : "none";
+      else if (row[3] === "grow") sc.root.style.clipPath = k < 1 ? `circle(${k * 120}% at 50% 55%)` : "none";
+      else sc.root.style.clipPath = "none";
+    } else if (live.has(i)) { live.get(i).root.remove(); live.delete(i); }
+  }
+};
+
+window.ready = (async () => {
+  const data = await (await fetch(`beats_${CUT}.json`)).json();
+  BEATS = data.beats.map((b) => b.t);
+  data.beats.forEach((b) => b.big && BIG.add(b.t));
+  TL = TIMELINES[CUT];
+  TL.forEach((row) => { row.a = row[1] === 0 ? 0 : nearBeat(row[1]); row.b = nearBeat(row[2]); });
+  TL[TL.length - 1].b = data.duration;
+  window.DURATION = data.duration;
+  await document.fonts.ready;
+  await Promise.all(["Manrope", "JetBrains Mono", "Exo 2"].map((f) => document.fonts.load(`700 40px "${f}"`)));
+  const names = ["phone-check-right", "phone-lesson", "phone-review", "phone-course", "phone-guide", "phone-interview", "phone-home", "desk-learning", "site-d-full", "popup-crop"];
+  await Promise.all(names.map((n) => new Promise((ok) => { const i = new Image(); i.onload = i.onerror = ok; i.src = IMG(n); })));
+  return true;
+})();
+</script>
+</body>
+</html>
