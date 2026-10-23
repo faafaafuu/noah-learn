@@ -3,7 +3,7 @@
 // Витрина получает подменённые курсы через перехват запросов (Fetch), сам
 // репозиторий не меняется.
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,10 +33,13 @@ const SWAP = [
   [/dev\/learning\.html/, learningHtml, "text/html"],
 ];
 
+const PROFILE = mkdtempSync(join(tmpdir(), "reel-"));
+// Профиль браузера — временный: после работы удаляется (их копилось на гигабайты).
+process.on("exit", () => { try { rmSync(PROFILE, { recursive: true, force: true, maxRetries: 5 }); } catch {} });
 const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 const PORT = 9351;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const edge = spawn(EDGE, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), "cap-"))}`, "--hide-scrollbars", "about:blank"], { stdio: "ignore" });
+const edge = spawn(EDGE, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${PROFILE}`, "--hide-scrollbars", "about:blank"], { stdio: "ignore" });
 for (let i = 0; i < 50; i++) {
   try { await fetch(`http://127.0.0.1:${PORT}/json/version`); break; } catch { await sleep(200); }
 }
@@ -121,4 +124,5 @@ if (!ONLY || ONLY.includes("desk")) {
   }
 }
 edge.kill();
+await new Promise((r) => setTimeout(r, 800));
 process.exit(0);

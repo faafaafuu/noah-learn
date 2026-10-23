@@ -2,15 +2,18 @@
 //   node --experimental-websocket frames.mjs sheet <cut> <out-dir> t1,t2,...  — отдельные кадры PNG
 //   node --experimental-websocket frames.mjs video <cut> <out.mp4> [fps] [from] [to]  — все кадры в H.264
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const [mode, cut, out, arg4, arg5, arg6] = process.argv.slice(2);
+const PROFILE = mkdtempSync(join(tmpdir(), "reel-"));
+// Профиль браузера — временный: после работы удаляется (их копилось на гигабайты).
+process.on("exit", () => { try { rmSync(PROFILE, { recursive: true, force: true, maxRetries: 5 }); } catch {} });
 const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 const PORT = 9353 + Math.floor(Math.random() * 200);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const edge = spawn(EDGE, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), "reel-"))}`, "--hide-scrollbars", "--force-device-scale-factor=1", "about:blank"], { stdio: "ignore" });
+const edge = spawn(EDGE, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${PROFILE}`, "--hide-scrollbars", "--force-device-scale-factor=1", "about:blank"], { stdio: "ignore" });
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/json/version`); break; } catch { await sleep(200); } }
 const target = await (await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: "PUT" })).json();
 const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -56,4 +59,5 @@ if (mode === "sheet") {
 }
 ws.close();
 edge.kill();
+await new Promise((r) => setTimeout(r, 800));
 process.exit(0);
