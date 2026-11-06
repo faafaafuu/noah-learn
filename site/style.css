@@ -305,3 +305,12 @@ html[data-look="classic"] .code__copy { background: #f2c14e; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* Текстовые страницы (политика конфиденциальности). */
+.doc { max-width: 760px; margin: 0 auto; padding: 60px var(--gutter) 80px; }
+.doc h1 { font-size: clamp(34px, 5vw, 56px); text-transform: uppercase; }
+.doc h2 { font-size: 22px; margin: 42px 0 12px; text-transform: none; }
+.doc p, .doc li { color: var(--t2); }
+.doc ul { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+.doc b { color: var(--t1); }
+.doc__date { color: var(--t3); font-size: 14px; }
