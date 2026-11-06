@@ -59,16 +59,6 @@ ${links.join("\n")}
 </html>
 `,
 );
-// Окно для Windows — свой вид: заголовок окна, боковое меню, курсы сеткой
-// (learning.html по макету окна 1000 × 700). Те же подменные команды.
-const desk = readFileSync(join(SRC, "learning.html"), "utf8")
-  .replace(/\r\n/g, "\n")
-  .replaceAll('href="./', 'href="')
-  .replaceAll('src="./', 'src="')
-  .replace("<title>Обучение — NOAH</title>", '<title>Qrack для Windows — демо</title>\n    <meta name="robots" content="noindex" />')
-  .replace('<script src="js/window-errors.js"></script>', '<script src="js/window-errors.js"></script>\n    <script src="dev/learn-mock.js"></script>')
-  .replace('data-el="appVersion">NOAH</span>', 'data-el="appVersion">QRACK</span>')
-  .replaceAll("окна обучения", "окна Qrack");
-if (!desk.includes("dev/learn-mock.js") || !desk.includes("QRACK")) throw new Error("learning.html изменился — поправить сборку окна");
-writeFileSync(join(OUT, "desktop.html"), desk);
+// На компьютере те же экраны раскладываются по-своему (меню слева) — от
+// 900 точек ширины; отдельной страницы для окна программы нет.
 console.log("демо собрано:", OUT);
