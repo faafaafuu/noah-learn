@@ -1,8 +1,8 @@
 // Снимки и анимации приложения для сайта и README — с настоящих экранов.
 //
 // Edge без окна, команды по протоколу отладки (CDP), кадры — в ffmpeg.
-// Экраны берутся с витрины репозитория NOAH (src/dev/learn.html и
-// src/dev/learning.html на подменных данных): её поднимает
+// Экраны берутся с витрины репозитория NOAH (src/dev/learn.html на
+// выдуманных курсах, ?demo=1 — src/dev/learn-demo.json): её поднимает
 // scripts/dev-server.mjs на порту 5173.
 //
 // Запуск: node --experimental-websocket tools/capture.mjs [имя сцены…]
@@ -78,6 +78,10 @@ async function browser() {
           await tab.send("Page.navigate", { url: `${BASE}${path}` });
           await sleep(2500);
         },
+        /** Тема приложения для снимков: neon (по умолчанию) или classic. */
+        async look(name = "neon") {
+          await tab.send("Runtime.evaluate", { expression: `localStorage.setItem("learn.look", '"${name}"'); dispatchEvent(new Event("learn:look"))` });
+        },
         /** JS на странице; ждёт промис. */
         async run(code) {
           const result = await tab.send("Runtime.evaluate", { expression: `(async () => { ${code} })()`, awaitPromise: true, returnByValue: true });
@@ -137,12 +141,14 @@ const nav = (call) => `const { nav } = await import("/js/learn-app/core.js"); ${
 const SCENES = {
   async phone(b) {
     const page = await b.page(PHONE);
-    await page.open("/dev/learn.html");
+    await page.open("/dev/learn.html?demo=1");
+    await page.look("neon");
+    await page.open("/dev/learn.html?demo=1");
     await page.shot(join(OUT, "phone-home.png"));
-    const course = await page.run(`return (await (await fetch("/dev/learn-fixtures.json")).json()).overview?.[0]?.id ?? "devops"`);
+    const course = await page.run(`return (await (await fetch("/dev/learn-demo.json")).json()).overview?.[0]?.id ?? "devops"`);
     await page.run(nav(`nav.push("course", { course: ${JSON.stringify(course)} })`));
     await page.shot(join(OUT, "phone-course.png"));
-    const topic = await page.run(`return (await (await fetch("/dev/learn-fixtures.json")).json()).overview?.[0]?.current ?? null`);
+    const topic = await page.run(`return (await (await fetch("/dev/learn-demo.json")).json()).overview?.[0]?.current ?? null`);
     if (topic) {
       await page.run(nav(`nav.push("lesson", { course: ${JSON.stringify(course)}, topic: ${JSON.stringify(topic)} })`));
       await sleep(800);
@@ -156,9 +162,9 @@ const SCENES = {
 
   async flow(b) {
     const page = await b.page(PHONE);
-    await page.open("/dev/learn.html");
-    const course = await page.run(`return (await (await fetch("/dev/learn-fixtures.json")).json()).overview?.[0]?.id ?? "devops"`);
-    const topic = await page.run(`return (await (await fetch("/dev/learn-fixtures.json")).json()).overview?.[0]?.current ?? null`);
+    await page.open("/dev/learn.html?demo=1");
+    const course = await page.run(`return (await (await fetch("/dev/learn-demo.json")).json()).overview?.[0]?.id ?? "devops"`);
+    const topic = await page.run(`return (await (await fetch("/dev/learn-demo.json")).json()).overview?.[0]?.current ?? null`);
     await record(
       page,
       "flow",
@@ -180,7 +186,7 @@ const SCENES = {
 
   async guide(b) {
     const page = await b.page(PHONE);
-    await page.open("/dev/learn.html");
+    await page.open("/dev/learn.html?demo=1");
     const id = await page.run(`return (await (await import("/js/bridge.js")).tauri()?.invoke("guides_list"))?.[1]?.id ?? null`).catch(() => null);
     if (!id) return console.log("guide: путеводителей на витрине нет");
     await page.run(nav(`nav.push("guide", { id: ${JSON.stringify(id)} })`));
@@ -189,45 +195,43 @@ const SCENES = {
     await page.close();
   },
 
-  // Qrack для сайта: главная с целями дня, вкладка «Цели», обзор курса и
-  // классическая тема. Цели ставятся тем же кодом, что в приложении.
+  // Qrack для сайта: главная с целями дня, вкладка «Цели», обзор курса —
+  // в Неоне и Классике. Только выдуманные курсы витрины (?demo=1,
+  // src/dev/learn-demo.json): своё владельца в публичное не попадает.
   async qrack(b) {
     const page = await b.page(PHONE);
-    await page.open("/dev/learn.html");
+    const demo = "/dev/learn.html?demo=1";
+    await page.open(demo);
     await page.run(`localStorage.clear(); localStorage.setItem("learn.look", '"neon"');`);
-    await page.open("/dev/learn.html");
+    await page.open(demo);
     await page.run(`
       const g = await import("/js/learn-app/goals.js");
       const ideas = g.suggestDay();
       ideas.forEach((idea) => g.goals.save(idea));
-      const week = g.goals.save({ period: "week", start: g.periodStart("week"), kind: "topics", course: ideas[0]?.course ?? "devops", target: 2, title: "Пройти 2 темы за неделю", by: "ai" });
-      g.goals.save({ period: "month", start: g.periodStart("month"), kind: "course", course: ideas[0]?.course ?? "devops", title: "Дойти до Kubernetes", by: "noa" });
+      const course = ideas[0]?.course ?? "astro";
+      g.goals.save({ period: "month", start: g.periodStart("month"), kind: "topics", course, target: 3, title: "Свет, альбедо и Солнце", by: "noa" });
       const first = g.goals.all().find((x) => x.period === "day" && x.kind === "focus");
       if (first) g.goals.save({ ...first, done: true, doneAt: Date.now() });
     `);
-    await page.open("/dev/learn.html");
-    await sleep(800);
-    await page.shot(join(OUT, "qrack-home.png"));
-    await page.run(nav(`nav.tab("goals")`));
-    await sleep(900);
-    await page.shot(join(OUT, "qrack-goals.png"));
-    const course = await page.run(`return (await (await fetch("/dev/learn-fixtures.json")).json()).overview?.[0]?.id ?? "devops"`);
-    await page.run(nav(`nav.tab("courses"); nav.push("course", { course: ${JSON.stringify(course)} })`));
-    await sleep(900);
-    await page.shot(join(OUT, "qrack-course.png"));
+    const course = await page.run(`return (await (await fetch("/dev/learn-demo.json")).json()).overview[0].id`);
+    const shots = async (suffix) => {
+      await page.open(demo);
+      await sleep(800);
+      await page.shot(join(OUT, `qrack-home${suffix}.png`));
+      await page.run(nav(`nav.tab("goals")`));
+      await sleep(900);
+      await page.shot(join(OUT, `qrack-goals${suffix}.png`));
+      await page.run(nav(`nav.tab("courses"); nav.push("course", { course: ${JSON.stringify(course)} })`));
+      await sleep(900);
+      await page.shot(join(OUT, `qrack-course${suffix}.png`));
+    };
+    await shots("");
     await page.run(`localStorage.setItem("learn.look", '"classic"');`);
-    await page.open("/dev/learn.html");
-    await sleep(800);
-    await page.shot(join(OUT, "qrack-classic.png"));
+    await shots("-classic");
     await page.close();
   },
 
-  async desktop(b) {
-    const page = await b.page(DESKTOP);
-    await page.open("/dev/learning.html");
-    await page.shot(join(OUT, "desktop-home.png"));
-    await page.close();
-  },
+
 };
 
 mkdirSync(OUT, { recursive: true });

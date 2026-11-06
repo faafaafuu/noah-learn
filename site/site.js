@@ -92,13 +92,14 @@ if (!still && matchMedia("(pointer: fine)").matches) {
 
 /* ── Темы: Неон и Классика ───────────────────────────────────────────── */
 
-const shot = document.querySelector(".looks__img");
+// Все экраны телефонов на странице — в выбранной теме (у каждого своя пара снимков).
+const shots = [...document.querySelectorAll("img[data-neon][data-classic]")];
 for (const button of document.querySelectorAll(".look")) {
   button.addEventListener("click", () => {
     const look = button.dataset.look;
     root.dataset.look = look;
     for (const other of document.querySelectorAll(".look")) other.classList.toggle("is-on", other === button);
-    if (shot) {
+    for (const shot of shots) {
       shot.style.opacity = "0";
       setTimeout(() => {
         shot.src = shot.dataset[look];

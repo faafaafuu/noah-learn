@@ -123,9 +123,9 @@ html[data-look="classic"] .btn--ghost { background: #fff; }
   display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center;
   min-height: calc(100vh - 66px);
 }
-.hero__title { font-size: clamp(56px, 9.5vw, 128px); text-transform: uppercase; line-height: 0.92; }
-.hero__brain {
-  display: block;
+.hero__title { font-size: clamp(52px, 8.4vw, 112px); text-transform: uppercase; line-height: 0.92; white-space: nowrap; }
+/* Точка — переливом акцента: «крякнись» и точка, без «мозга». */
+.hero__dot {
   background: linear-gradient(90deg, var(--accent), var(--label), var(--accent));
   background-size: 200% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;

@@ -35,5 +35,6 @@ node --experimental-websocket tools/capture.mjs flow       # одна
 собирает кадры через ffmpeg: `.png` — экраны, `.mp4` — для сайта, `.webp` —
 анимация для README. Сцены — в объекте `SCENES`.
 
-Ролик-пример `site/media/lesson-video.mp4` — настоящий ролик по разделу курса,
-пережатый в 720p (`crf 27`).
+Все экраны снимаются на выдуманных курсах витрины (`?demo=1`,
+`src/dev/learn-demo.json` в репозитории NOAH): настоящие курсы и цели в
+публичное не попадают.

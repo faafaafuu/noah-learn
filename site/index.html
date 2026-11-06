@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Qrack — крякни мозг: учись так, чтобы понял</title>
+    <title>Qrack — крякнись: учись так, чтобы понял</title>
     <meta name="description" content="Qrack собирает курс под твою цель — первая тема за минуты, — объясняет голосом, гоняет до «наизусть», ставит в настоящий терминал и проводит собеседование как на звонке. Цели на день, неделю, месяц и год." />
     <meta name="theme-color" content="#060809" />
-    <meta property="og:title" content="Qrack — крякни мозг" />
+    <meta property="og:title" content="Qrack — крякнись" />
     <meta property="og:description" content="Курс под твою цель, наставник голосом, практика, собеседование разговором и цели, которые тянут друг друга." />
     <meta property="og:image" content="media/qrack-home.png" />
     <link rel="icon" href="media/noah-mark.svg" />
@@ -35,8 +35,7 @@
         <div class="hero__text">
           <p class="label reveal">// учёба с ИИ-наставником</p>
           <h1 class="hero__title reveal">
-            <span class="glitch" data-text="Крякни">Крякни</span>
-            <span class="hero__brain">мозг.</span>
+            <span class="glitch" data-text="Крякнись">Крякнись</span><span class="hero__dot">.</span>
           </h1>
           <p class="lead reveal">
             Учись так, чтобы понял — а&nbsp;не пролистал. Qrack собирает курс под твою цель — первая тема готова за&nbsp;минуты, объясняет голосом, гоняет до&nbsp;«наизусть», ставит в&nbsp;настоящий терминал и&nbsp;проводит собеседование как на&nbsp;звонке.
@@ -55,7 +54,7 @@
         <div class="hero__stage" aria-hidden="true">
           <canvas class="ring ring--big"></canvas>
           <div class="phone tilt">
-            <img src="media/qrack-home.png" alt="" width="390" height="844" />
+            <img src="media/qrack-home.png" data-neon="media/qrack-home.png" data-classic="media/qrack-home-classic.png" alt="" width="390" height="844" />
           </div>
           <span class="orbit orbit--1">Урок с Ноа</span>
           <span class="orbit orbit--2">Наизусть</span>
@@ -67,8 +66,8 @@
       <!-- Бегущая строка -->
       <div class="ticker" aria-hidden="true">
         <div class="ticker__row">
-          <span>Kubernetes к собеседованию</span><span>Python с нуля</span><span>Английский для работы</span><span>Сети и Linux</span><span>Финансовая грамотность</span><span>История искусства</span><span>Эндуро на большом мотоцикле</span><span>Умный дом</span>
-          <span>Kubernetes к собеседованию</span><span>Python с нуля</span><span>Английский для работы</span><span>Сети и Linux</span><span>Финансовая грамотность</span><span>История искусства</span><span>Эндуро на большом мотоцикле</span><span>Умный дом</span>
+          <span>Астрономия с нуля</span><span>Python для анализа данных</span><span>Английский для путешествий</span><span>Основы фотографии</span><span>Финансовая грамотность</span><span>История искусства</span><span>Музыкальная теория</span><span>Как устроен сон</span>
+          <span>Астрономия с нуля</span><span>Python для анализа данных</span><span>Английский для путешествий</span><span>Основы фотографии</span><span>Финансовая грамотность</span><span>История искусства</span><span>Музыкальная теория</span><span>Как устроен сон</span>
         </div>
       </div>
 
@@ -82,7 +81,7 @@
           <li class="step reveal">
             <span class="step__n">01</span>
             <h3>Скажи цель</h3>
-            <p>«Kubernetes к&nbsp;собеседованию на&nbsp;DevOps» или «разобраться, как работает фондовый рынок». Своими словами, хоть голосом.</p>
+            <p>«Астрономия с&nbsp;нуля — чтобы понимать, что вижу в&nbsp;телескоп» или «разобраться, как работает фондовый рынок». Своими словами, хоть голосом.</p>
           </li>
           <li class="step reveal">
             <span class="step__n">02</span>
@@ -152,16 +151,16 @@
             Год → месяц → неделя → сегодня. Скажи, чего хочешь и&nbsp;к&nbsp;какому сроку, — Ноа разложит по&nbsp;темам курса и&nbsp;твоему темпу. Задачи дня отмечаются сами: урок прочитан, проверка сдана, минуты фокуса набраны.
           </p>
           <ul class="cascade" aria-label="Как цели тянут друг друга">
-            <li class="cascade__row" data-level="0"><span class="tick"></span>Пройти курс DevOps к&nbsp;декабрю <em>год</em></li>
-            <li class="cascade__row" data-level="1"><span class="tick"></span>Темы 7–10: Docker и&nbsp;Kubernetes <em>ноябрь</em></li>
-            <li class="cascade__row" data-level="2"><span class="tick"></span>Docker: урок, проверка, практика <em>неделя</em></li>
-            <li class="cascade__row" data-level="3"><span class="tick"></span>Урок: Docker <em>сегодня</em></li>
+            <li class="cascade__row" data-level="0"><span class="tick"></span>Пройти «Астрономию с&nbsp;нуля» к&nbsp;весне <em>год</em></li>
+            <li class="cascade__row" data-level="1"><span class="tick"></span>Свет, альбедо и&nbsp;Солнце <em>месяц</em></li>
+            <li class="cascade__row" data-level="2"><span class="tick"></span>Альбедо: урок, наизусть, проверка <em>неделя</em></li>
+            <li class="cascade__row" data-level="3"><span class="tick"></span>Урок: Альбедо и&nbsp;отражение <em>сегодня</em></li>
             <li class="cascade__row" data-level="3"><span class="tick"></span>Повторить 20 карточек <em>сегодня</em></li>
             <li class="cascade__row" data-level="3"><span class="tick"></span>Фокус 25 минут <em>сегодня</em></li>
           </ul>
         </div>
         <div class="phone phone--side tilt reveal" aria-hidden="true">
-          <img src="media/qrack-goals.png" alt="" width="390" height="844" loading="lazy" />
+          <img src="media/qrack-goals.png" data-neon="media/qrack-goals.png" data-classic="media/qrack-goals-classic.png" alt="" width="390" height="844" loading="lazy" />
         </div>
       </section>
 
@@ -177,8 +176,8 @@
           <button class="look" data-look="classic" type="button">Классика</button>
         </div>
         <div class="looks__phones reveal">
-          <div class="phone tilt"><img class="looks__img" src="media/qrack-home.png" data-neon="media/qrack-home.png" data-classic="media/qrack-classic.png" alt="" width="390" height="844" loading="lazy" /></div>
-          <div class="phone tilt phone--back"><img src="media/qrack-course.png" alt="" width="390" height="844" loading="lazy" /></div>
+          <div class="phone tilt"><img src="media/qrack-home.png" data-neon="media/qrack-home.png" data-classic="media/qrack-home-classic.png" alt="" width="390" height="844" loading="lazy" /></div>
+          <div class="phone tilt phone--back"><img src="media/qrack-course.png" data-neon="media/qrack-course.png" data-classic="media/qrack-course-classic.png" alt="" width="390" height="844" loading="lazy" /></div>
         </div>
       </section>
 
@@ -188,7 +187,7 @@
           <p class="label">// для нейросетей</p>
           <h2>Твоя нейросеть собирает курсы прямо в&nbsp;Qrack</h2>
           <p class="lead">
-            Подключи Qrack в&nbsp;Claude, ChatGPT или Cursor как MCP-коннектор — и&nbsp;проси: «собери курс по&nbsp;Terraform», «поправь третью тему», «поставь мне цели на&nbsp;неделю». Всё проверяется по&nbsp;стандарту курса и&nbsp;сразу появляется в&nbsp;приложении.
+            Подключи Qrack в&nbsp;Claude, ChatGPT или Cursor как MCP-коннектор — и&nbsp;проси: «собери курс по&nbsp;основам фотографии», «поправь третью тему», «поставь мне цели на&nbsp;неделю». Всё проверяется по&nbsp;стандарту курса и&nbsp;сразу появляется в&nbsp;приложении.
           </p>
           <div class="code reveal">
             <code class="code__url">https://noahlab.ru/qrack/mcp</code>
