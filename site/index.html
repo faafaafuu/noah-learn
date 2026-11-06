@@ -10,7 +10,7 @@
     <meta property="og:description" content="Курс под твою цель, наставник голосом, практика, собеседование разговором и цели, которые тянут друг друга." />
     <meta property="og:image" content="media/qrack-home.png" />
     <link rel="icon" href="media/noah-mark.svg" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=2" />
   </head>
   <body>
     <canvas class="sky" aria-hidden="true"></canvas>
@@ -285,13 +285,13 @@
       <section class="desktop" id="desktop">
         <div class="section__head reveal">
           <p class="label">// на компьютере</p>
-          <h2>Qrack для Windows</h2>
+          <h2>Qrack на компьютере</h2>
           <p class="lead">Тот же Qrack отдельной программой: курсы, цели и&nbsp;прогресс общие с&nbsp;телефоном и&nbsp;браузером, Ноа-ассистент внутри — спроси голосом или текстом. Практика — в&nbsp;терминале прямо на&nbsp;твоём компьютере.</p>
         </div>
         <div class="desktop__row reveal">
-          <a class="btn btn--glow" href="#/try/windows">Посмотреть окно программы</a>
+          <a class="btn btn--glow" href="#/try/pc">Посмотреть окно программы</a>
           <a class="btn btn--ghost" href="#/library/desktop">Как она устроена</a>
-          <span class="desktop__note">Windows 10 и&nbsp;11 · скоро</span>
+          <span class="desktop__note">Windows · macOS · Linux — скоро</span>
         </div>
       </section>
 
@@ -322,7 +322,7 @@
       <section class="final reveal">
         <canvas class="ring ring--final" aria-hidden="true"></canvas>
         <h2>Мозг крякает — значит, понял.</h2>
-        <p class="lead">В браузере — уже сейчас. Windows и&nbsp;iPhone — скоро, а&nbsp;посмотреть можно прямо здесь.</p>
+        <p class="lead">Онлайн — уже сейчас. Программа для Windows, macOS и&nbsp;Linux и&nbsp;приложение для iPhone и&nbsp;Android — скоро, а&nbsp;посмотреть можно прямо здесь.</p>
         <div class="final__actions">
           <a class="btn btn--glow" href="app/">Открыть Qrack</a>
           <a class="btn btn--ghost" href="#/try">Попробовать демо</a>
@@ -330,7 +330,7 @@
       </section>
       </div>
 
-      <!-- Попробовать: живое демо в окне Windows, в браузере и на iPhone -->
+      <!-- Попробовать: живое демо — программа на ПК, мобильное приложение, онлайн -->
       <div class="view" data-view="try" hidden>
         <section class="try">
           <div class="section__head">
@@ -339,27 +339,27 @@
             <p class="lead">Настоящие экраны на&nbsp;выдуманных курсах — матанализ, органика, собеседование. Нажимай что угодно: уроки, наизусть, цели, профиль. Ничего не&nbsp;сломаешь.</p>
           </div>
           <div class="try__tabs" role="tablist" aria-label="Устройство">
-            <a role="tab" href="#/try/windows" data-device="windows">Windows</a>
-            <a role="tab" href="#/try/web" data-device="web">Онлайн</a>
-            <a role="tab" href="#/try/phone" data-device="phone">iPhone</a>
+            <a role="tab" href="#/try/pc" data-device="pc"><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='2' aria-hidden='true'><rect x='3' y='4' width='18' height='12' rx='1'/><path d='M8 20h8M12 16v4'/></svg><span>ПК</span></a>
+            <a role="tab" href="#/try/mobile" data-device="mobile"><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='2' aria-hidden='true'><rect x='7' y='2' width='10' height='20' rx='2'/><path d='M11 18h2'/></svg><span>Мобильный</span></a>
+            <a role="tab" href="#/try/web" data-device="web"><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='2' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18'/></svg><span>Онлайн</span></a>
           </div>
           <div class="try__body">
             <div class="device-fit">
-            <div class="device" data-device="windows">
+            <div class="device" data-device="pc">
               <div class="device__bar device__bar--web">
                 <i class="dot"></i><i class="dot"></i><i class="dot"></i>
                 <span class="device__url">noahlab.ru/qrack/app/</span>
               </div>
-              <div class="device__bar device__bar--phone"><i class="device__notch"></i></div>
-              <!-- Окно Windows — свой вид: заголовок окна, боковое меню, курсы
-                   сеткой. Браузер и iPhone — общие экраны приложения. -->
-              <iframe class="device__screen" data-screen="desk" title="Демо Qrack для Windows" data-src="demo/desktop.html"></iframe>
+              <div class="device__bar device__bar--mobile"><i class="device__notch"></i></div>
+              <!-- Программа на ПК — свой вид: заголовок окна, боковое меню, курсы
+                   сеткой. Мобильный и онлайн — общие экраны приложения. -->
+              <iframe class="device__screen" data-screen="desk" title="Демо Qrack на компьютере" data-src="demo/desktop.html"></iframe>
               <iframe class="device__screen" data-screen="app" title="Демо Qrack" data-src="demo/" hidden></iframe>
             </div>
             </div>
             <div class="try__about">
-              <div data-for="windows">
-                <h3>Программа для Windows</h3>
+              <div data-for="pc">
+                <h3>Программа для компьютера</h3>
                 <ul>
                   <li>Свой вид для компьютера: боковое меню с&nbsp;курсами и&nbsp;темами, путь курса, слабые места.</li>
                   <li>Отдельное окно Qrack — не&nbsp;модуль другой программы.</li>
@@ -367,7 +367,7 @@
                   <li>Практика в&nbsp;терминале прямо на&nbsp;компьютере.</li>
                   <li>Модель, ключи и&nbsp;вход — те&nbsp;же настройки, что в&nbsp;приложении.</li>
                 </ul>
-                <p class="try__state">Готовится к&nbsp;выпуску · Windows 10 и&nbsp;11</p>
+                <p class="try__state">Готовится к&nbsp;выпуску · Windows, macOS, Linux</p>
                 <a class="btn btn--ghost" href="#/library/desktop">Как она устроена</a>
               </div>
               <div data-for="web">
@@ -380,14 +380,14 @@
                 <p class="try__state">Уже работает · вход через Google, Яндекс, Telegram или почту</p>
                 <a class="btn btn--glow" href="app/">Открыть настоящую</a>
               </div>
-              <div data-for="phone">
-                <h3>iPhone</h3>
+              <div data-for="mobile">
+                <h3>Мобильное приложение</h3>
                 <ul>
                   <li>Жесты как в&nbsp;родных приложениях: смахнуть назад, удалить, долгое нажатие.</li>
                   <li>Урок голосом и&nbsp;ответы вслух.</li>
                   <li>Практика по&nbsp;SSH на&nbsp;своём сервере.</li>
                 </ul>
-                <p class="try__state">Скоро в&nbsp;App Store</p>
+                <p class="try__state">Скоро · iPhone и&nbsp;Android</p>
               </div>
               <p class="try__note">Демо работает без сети и&nbsp;без аккаунта: ответы Ноа здесь — заготовки, курсы выдуманные.</p>
             </div>
@@ -415,7 +415,7 @@
       <a href="privacy.html">Конфиденциальность</a>
     </footer>
 
-    <script src="site.js" type="module"></script>
-    <script src="spa.js" type="module"></script>
+    <script src="site.js?v=2" type="module"></script>
+    <script src="spa.js?v=2" type="module"></script>
   </body>
 </html>

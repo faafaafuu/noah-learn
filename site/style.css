@@ -341,10 +341,10 @@ html[data-look="classic"] .code__copy { background: #f2c14e; }
   transition: width 0.45s var(--ease), height 0.45s var(--ease), border-radius 0.45s var(--ease);
 }
 .device__bar { display: none; align-items: center; gap: 8px; flex: none; padding: 0 12px; height: 34px; background: #0e1117; border-bottom: 1px solid var(--line-soft); font: 500 12px/1 var(--mono); color: var(--t3); }
-.device[data-device="windows"] .device__bar--windows,
+.device[data-device="pc"] .device__bar--pc,
 .device[data-device="web"] .device__bar--web,
-.device[data-device="phone"] .device__bar--phone { display: flex; }
-.device__bar--windows span { margin-right: auto; color: var(--t2); }
+.device[data-device="mobile"] .device__bar--mobile { display: flex; }
+.device__bar--pc span { margin-right: auto; color: var(--t2); }
 .win { width: 28px; height: 20px; display: grid; place-items: center; position: relative; }
 .win::before { content: ""; width: 10px; height: 10px; border: 1px solid var(--t3); }
 .win--min::before { height: 0; border-width: 1px 0 0; }
@@ -353,8 +353,8 @@ html[data-look="classic"] .code__copy { background: #f2c14e; }
 .device__url { flex: 1; margin-left: 10px; padding: 6px 12px; border-radius: 6px; background: #060809; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .device__url::before { content: "🔒 "; }
 .device[data-device="web"] { width: min(1000px, 100%); height: 760px; border-radius: 10px; }
-.device[data-device="phone"] { width: 390px; height: 844px; border-radius: 46px; border-width: 10px; border-color: #0e1117; }
-.device__bar--phone { justify-content: center; height: 30px; background: #000; border: 0; }
+.device[data-device="mobile"] { width: 390px; height: 844px; border-radius: 46px; border-width: 10px; border-color: #0e1117; }
+.device__bar--mobile { justify-content: center; height: 30px; background: #000; border: 0; }
 .device__notch { width: 110px; height: 22px; border-radius: 12px; background: #0e1117; }
 .device__screen { flex: 1; width: 100%; border: 0; background: var(--bg); }
 .try__body:has(.device[data-device="web"]) { grid-template-columns: 1fr; }
@@ -403,8 +403,8 @@ html[data-look="classic"] .device__url { background: #f7f6f1; }
   .top__nav { display: flex; order: 3; width: 100%; margin: 0; overflow-x: auto; gap: 20px; scrollbar-width: none; }
   .top__nav a { white-space: nowrap; }
   .try__body { grid-template-columns: 1fr; gap: 36px; }
-  .device, .device[data-device="phone"] { width: 100%; max-width: 480px; height: 78vh; min-height: 560px; }
-  .device[data-device="phone"] { max-width: 390px; }
+  .device, .device[data-device="mobile"] { width: 100%; max-width: 480px; height: 78vh; min-height: 560px; }
+  .device[data-device="mobile"] { max-width: 390px; }
   .library { grid-template-columns: 1fr; gap: 28px; }
   .library__side { position: static; max-height: none; }
   .library__nav { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -418,17 +418,17 @@ html[data-look="classic"] .device__url { background: #f7f6f1; }
   .prose td:first-child { white-space: normal; }
 }
 
-/* Окно Windows: свой заголовок у самой программы, рамка — только тень. */
+/* Окно программы на ПК: свой заголовок у самой программы, рамка — только тень. */
 .device-fit { width: 100%; }
-.device[data-device="windows"] { width: 1000px; height: 700px; transform-origin: top left; border-radius: 8px; }
+.device[data-device="pc"] { width: 1000px; height: 700px; transform-origin: top left; border-radius: 8px; }
 .device__screen[hidden] { display: none; }
-.try__body:has(.device[data-device="windows"]) { grid-template-columns: 1fr; }
-.try__body:has(.device[data-device="windows"]) .try__about,
+.try__body:has(.device[data-device="pc"]) { grid-template-columns: 1fr; }
+.try__body:has(.device[data-device="pc"]) .try__about,
 .try__body:has(.device[data-device="web"]) .try__about { display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px; }
-.try__body:has(.device[data-device="windows"]) .try__about .try__note,
+.try__body:has(.device[data-device="pc"]) .try__about .try__note,
 .try__body:has(.device[data-device="web"]) .try__about .try__note { grid-column: 2; margin-top: 0; }
 @media (max-width: 920px) {
-  .device[data-device="windows"] { width: 1000px; max-width: none; height: 700px; min-height: 0; }
+  .device[data-device="pc"] { width: 1000px; max-width: none; height: 700px; min-height: 0; }
   .try__body .try__about { display: block !important; }
 }
 
@@ -485,3 +485,6 @@ html[data-look="classic"] .device__url { background: #f7f6f1; }
 main { overflow-x: clip; }
 .try__body > * { min-width: 0; }
 .device-fit { overflow: hidden; padding: 0 0 2px; }
+.try__tabs a { display: inline-flex; align-items: center; gap: 10px; }
+.try__tabs svg { flex: none; }
+@media (max-width: 560px) { .try__tabs a { justify-content: center; } }

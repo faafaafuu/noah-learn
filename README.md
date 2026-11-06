@@ -51,10 +51,12 @@
 
 | | |
 |---|---|
-| **Браузер** | [noahlab.ru/qrack/app](https://noahlab.ru/qrack/app/), из России с мобильного — [m.noahlab.ru/qrack/app](https://m.noahlab.ru/qrack/app/). Вход через Telegram или Google. |
-| **iPhone** | Qrack — урок голосом, повторение, практика по SSH, цели. Бета: `.ipa` в [релизах NOAH](https://github.com/faafaafuu/asis/releases/latest). |
-| **Нейросети** | MCP-коннектор [noahlab.ru/qrack/mcp](https://noahlab.ru/qrack/mcp): собрать и поправить курс, поставить цели. |
-| **Компьютер** | Qrack для Windows — отдельная программа с Ноа-ассистентом, голосом и практикой в терминале. |
+| **Онлайн** | [noahlab.ru/qrack/app](https://noahlab.ru/qrack/app/), из России с мобильного — [m.noahlab.ru/qrack/app](https://m.noahlab.ru/qrack/app/). |
+| **ПК** | Windows, macOS, Linux — отдельная программа со своим видом окна, Ноа-ассистентом, голосом и терминалом. Скоро. |
+| **Мобильный** | iPhone и Android — урок голосом, повторение, практика по SSH, цели. Бета iPhone: `.ipa` в [релизах NOAH](https://github.com/faafaafuu/asis/releases/latest). |
+| **Своя нейросеть** | Дополнительно: MCP-коннектор [noahlab.ru/qrack/mcp](https://noahlab.ru/qrack/mcp) — поправить курс или поставить цели из Claude или ChatGPT. |
+
+Посмотреть всё живьём, без входа — [noahlab.ru/qrack/#/try](https://noahlab.ru/qrack/#/try).
 
 Курсы, прогресс, цели, ролики и путеводители живут в аккаунте — на всех
 устройствах сразу. Открытое однажды на телефоне и компьютере читается без сети.

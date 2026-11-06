@@ -1,7 +1,7 @@
-// Разделы одной страницы: главная, «Попробовать» (живое демо в окне Windows,
-// в браузере и на iPhone) и библиотека — статьи о том, как устроен Qrack.
+// Разделы одной страницы: главная, «Попробовать» (живое демо: программа на
+// ПК, мобильное приложение, онлайн) и библиотека — как устроен Qrack.
 //
-// Адреса: #/ — главная, #/try/windows|web|phone, #/library/<статья>.
+// Адреса: #/ — главная, #/try/pc|mobile|web, #/library/<статья>.
 // Обычные якоря (#mcp, #goals) открывают главную и листают к блоку.
 
 const views = [...document.querySelectorAll("[data-view]")];
@@ -17,12 +17,12 @@ function show(name) {
 
 const device = document.querySelector(".device");
 const fit = document.querySelector(".device-fit");
-const DEVICES = { windows: "Windows", web: "Онлайн", phone: "iPhone" };
+const DEVICES = { pc: "ПК", mobile: "Мобильный", web: "Онлайн" };
 /** Окно программы — в натуральную величину, на узком экране — уменьшенным. */
 const WINDOW = { width: 1000, height: 700 };
 
 function fitWindow() {
-  if (device.dataset.device !== "windows") {
+  if (device.dataset.device !== "pc") {
     device.style.transform = "";
     fit.style.height = "";
     return;
@@ -34,10 +34,10 @@ function fitWindow() {
 addEventListener("resize", fitWindow);
 
 function tryOn(kind) {
-  if (!DEVICES[kind]) kind = "windows";
-  // Демо грузится только когда его открыли. Окно Windows — свой вид; браузер
-  // и iPhone — одни экраны, и переключение между ними не сбрасывает, куда зашёл.
-  const wanted = kind === "windows" ? "desk" : "app";
+  if (!DEVICES[kind]) kind = "pc";
+  // Демо грузится только когда его открыли. Программа на ПК — свой вид;
+  // мобильный и онлайн — одни экраны, переключение не сбрасывает, куда зашёл.
+  const wanted = kind === "pc" ? "desk" : "app";
   for (const frame of document.querySelectorAll(".device__screen")) {
     const on = frame.dataset.screen === wanted;
     frame.hidden = !on;
