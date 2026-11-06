@@ -1,0 +1,313 @@
+// Скрипт окна попапа в приложении (десктоп и мобильные сборки Tauri).
+//
+// Отличие от веб-режима: здесь попап — целое окно, поэтому позиционированием
+// занимается Rust. Фронтенд отвечает только за содержимое и сообщает свой размер.
+
+import { PopupView, onScrollbar } from "./popup-view.js";
+import { TauriProvider, MockProvider, DEFAULT_ERROR_TEXT } from "./ai-client.js";
+import { tauri, appWindow, applyTheme } from "./bridge.js";
+import { attachMobileEntry } from "./mobile-entry.js";
+
+/** Поле вокруг попапа внутри окна — под тень. Должно совпадать с CSS. */
+const SHADOW_INSET = 48;
+
+const api = tauri();
+const mount = document.getElementById("mount");
+
+const view = new PopupView({
+  // Без Tauri (открыли popup.html в браузере) — mock, чтобы окно не было пустым.
+  client: api ? new TauriProvider(api.invoke) : new MockProvider(),
+  errorText: DEFAULT_ERROR_TEXT,
+  onGeometry: ({ width, height }) => {
+    if (!api || !width || !height) return;
+    api.invoke("popup_ready", { width, height, shadowInset: SHADOW_INSET }).catch(() => {});
+  },
+  onClose: () => close(),
+});
+
+mount.append(view.el);
+
+function close() {
+  view.close();
+  api?.invoke("close_popup").catch(() => {});
+}
+
+/** Края и углы, за которые тянут окно, и как их называет система. */
+const EDGES = {
+  n: "North",
+  s: "South",
+  e: "East",
+  w: "West",
+  ne: "NorthEast",
+  nw: "NorthWest",
+  se: "SouthEast",
+  sw: "SouthWest",
+};
+
+/**
+ * Делает окно обычным: его можно двигать и растягивать.
+ *
+ * Рамки у окна нет — она бы всё испортила: попап всплывает поверх чужого текста
+ * и должен выглядеть карточкой, а не окном программы. Поэтому за заголовок
+ * тянем сами, а по краям кладём невидимые полоски шириной с обычную рамку.
+ *
+ * Само движение ведёт система, а не мы: она держит курсор до отпускания кнопки,
+ * знает про края экрана и прилипание. Мы только сообщаем Rust, что геометрия
+ * теперь принадлежит человеку, — иначе следующий же ответ вернул бы окно на
+ * прежнее место прежнего размера.
+ */
+function attachHandles(popup) {
+  const win = appWindow();
+  if (!win) return;
+
+  for (const edge of Object.keys(EDGES)) {
+    const grip = document.createElement("span");
+    grip.className = `popup__grip popup__grip--${edge}`;
+    grip.dataset.edge = edge;
+    grip.setAttribute("aria-hidden", "true");
+    popup.append(grip);
+  }
+
+  popup.addEventListener("pointerdown", (event) => {
+    const edge = event.target?.dataset?.edge;
+    if (!edge || event.button !== 0) return;
+    event.preventDefault();
+    // Растянутое окно перестаёт подгоняться под содержимое — значит, содержимое
+    // должно заполнять окно само. Переключает это одна пометка, остальное в CSS.
+    document.documentElement.dataset.sized = "";
+    win.startResizeDragging(EDGES[edge]);
+    api?.invoke("popup_taken_over", { moved: true, sized: true }).catch(() => {});
+  });
+
+  // Окно таскается за любое место, кроме полей, кнопок, ссылок и краёв. Раньше —
+  // только за заголовок, а у голосового ответа и напоминания он пустой, и
+  // ухватиться было не за что. Выделять текст в окне и так нельзя: нажатие
+  // мыши гасится, чтобы окно не отнимало фокус.
+  popup.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.target?.dataset?.edge) return;
+    if (event.target.closest("button, a, input, textarea, select, label")) return;
+    // Ползунок прокрутки прокручивает, а Ctrl — выделяет текст, чтобы спросить
+    // про выделенное: ни то ни другое не повод хватать окно.
+    if (event.ctrlKey || onScrollbar(event)) return;
+    event.preventDefault();
+    win.startDragging();
+    api?.invoke("popup_taken_over", { moved: true, sized: false }).catch(() => {});
+  });
+}
+
+attachHandles(view.el);
+
+// Признак жизни окна.
+//
+// Забытое окно закрывается само через минуту — иначе, раз щелчок мимо его больше
+// не закрывает, оно висело бы поверх чужой работы до перезагрузки. Но чтение —
+// это тоже занятие, и со стороны Rust оно неотличимо от заброшенности: мышь
+// стоит, клавиши молчат. Поэтому о любом признаке жизни сообщаем сами.
+//
+// Не чаще раза в несколько секунд: команда дешёвая, но не настолько, чтобы слать
+// её на каждое движение мыши.
+let toldAt = 0;
+function stillHere() {
+  const now = performance.now();
+  if (now - toldAt < 5000) return;
+  toldAt = now;
+  api?.invoke("popup_active").catch(() => {});
+}
+
+for (const event of ["mousemove", "pointerdown", "keydown", "wheel"]) {
+  document.addEventListener(event, stillHere, { passive: true, capture: true });
+}
+
+// Пришёл ответ, раскрылось окно, добавилась реплика — это тоже жизнь окна.
+// Без этого отсчёт минуты шёл с последнего движения мыши: человек спросил
+// голосом, дождался ответа, начал читать — и окно закрывалось у него на глазах.
+view.onChange = stillHere;
+
+// Пробел в самом окне попапа.
+//
+// Хук пробел нашего окна не забирает — в поле ввода он нужен для слов. Но если
+// поле пустое, человек не печатает, а просит прочитать вслух: отдаём нажатие
+// и отпускание Rust, и они значат ровно то же, что пробел поверх чужого окна —
+// коротко нажать: прочитать или замолчать, зажать на полсекунды: слушать.
+let spaceDown = false;
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.code !== "Space" || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (!view.inputEmpty) return;
+    e.preventDefault();
+    if (e.repeat || spaceDown) return;
+    spaceDown = true;
+    api?.invoke("popup_space", { down: true }).catch(() => {});
+  },
+  true,
+);
+document.addEventListener(
+  "keyup",
+  (e) => {
+    if (e.code !== "Space" || !spaceDown) return;
+    e.preventDefault();
+    spaceDown = false;
+    api?.invoke("popup_space", { down: false }).catch(() => {});
+  },
+  true,
+);
+
+if (api) {
+  // Тему Rust проставил до первого кадра — здесь её не трогаем вовсе.
+  // Попап всплывает поверх чужого окна мгновенно, и вспышка чужой темы
+  // заметна именно тут.
+  api
+    .invoke("runtime_config")
+    .then((config) => {
+      view.errorText = config.errorText || DEFAULT_ERROR_TEXT;
+      view.dialogue = Boolean(config.dialogue);
+    })
+    .catch(() => {});
+
+  /** Показывает содержимое по данным из Rust. */
+  function applyOpen(payload) {
+    const { term, context, theme, errorText, dialogue, speak, quiet, answer, label } = payload ?? {};
+    // Новый вопрос — новое окно: размер снова определяет содержимое. Rust к
+    // этому моменту уже забыл про ручную геометрию, и разметка должна забыть
+    // тоже, иначе окно осталось бы растянутым под ответ в две строки.
+    delete document.documentElement.dataset.sized;
+    if (theme) applyTheme(theme);
+    if (errorText) view.errorText = errorText;
+    if (dialogue !== undefined) view.dialogue = Boolean(dialogue);
+    // Готовый текст показываем как есть, ничего не спрашивая.
+    if (answer) {
+      // Весть о версии — «Весть», остальное — напоминание о деле.
+      view.announce(answer, { kind: /^Вышла версия/.test(answer) ? "news" : "reminder", label: label ?? "" });
+      return;
+    }
+    view.open({ term: term ?? "", context: context ?? "", speak: Boolean(speak), quiet: Boolean(quiet) });
+  }
+
+  // Окно могли открыть раньше, чем эта страница загрузилась: тогда событие
+  // до нас не дошло, и Rust придержал вопрос до этого запроса. Без него первое
+  // открытие висело бы с вечным «Анализирую…».
+  api
+    .invoke("pending_open")
+    .then((payload) => {
+      if (payload) applyOpen(payload);
+    })
+    .catch(() => {
+      /* окно открыто вне приложения — показывать нечего */
+    });
+
+  // Новое выделение или напоминание: Rust уже сохранил якорь, нам остаётся
+  // показать содержимое — той же функцией, что и первое открытие, иначе
+  // готовый текст напоминания (payload.answer) снова уйдёт мимо и вместо
+  // него попап отправит модели пустой term.
+  api.listen("popup:open", (event) => {
+    applyOpen(event.payload);
+  });
+
+  // Читает ли голос: полоса «Читаю вслух» держится, пока Rust говорит, что
+  // речь звучит. voice_speak возвращается сразу, поэтому конец речи узнаём
+  // вопросом раз в треть секунды — только пока полоса на экране.
+  let readWatch = 0;
+  function reading() {
+    view.speaking = true;
+    clearInterval(readWatch);
+    // Первые полсекунды синтез только начинается — не принимаем тишину за конец.
+    const since = Date.now();
+    readWatch = setInterval(() => {
+      api
+        .invoke("voice_busy")
+        .then((busy) => {
+          if (busy || Date.now() - since < 1500) return;
+          clearInterval(readWatch);
+          view.speaking = false;
+        })
+        .catch(() => {
+          clearInterval(readWatch);
+          view.speaking = false;
+        });
+    }, 350);
+  }
+  function quiet() {
+    clearInterval(readWatch);
+    view.speaking = false;
+  }
+
+  // Пробел: прочитать вслух. Клавишу ловит и забирает себе Rust — окно
+  // намеренно не держит фокус, и до него нажатия не доходят.
+  api.listen("voice:speak", (event) => {
+    // Номер просьбы возвращается с текстом: если чтение успели оборвать, Rust
+    // его не начнёт. Пустой текст тоже отвечаем — иначе просьба висела бы.
+    const text = view.spokenText() ?? "";
+    if (text) reading();
+    api.invoke("voice_speak", { text, request: event.payload ?? null }).catch(() => {
+      // Голос не скачан или выключен. Молча: попап живёт секунды, и ругаться
+      // на него поверх чужого окна незачем — состояние видно в настройках.
+      quiet();
+    });
+  });
+
+  // Кнопки попапа: прочитать, замолчать, микрофон, настройки.
+  view.onSpeak = (text) => {
+    if (!text) return;
+    reading();
+    api.invoke("voice_speak", { text }).catch(quiet);
+  };
+  view.onStopSpeaking = () => {
+    quiet();
+    api.invoke("voice_stop").catch(() => {});
+  };
+  // Микрофон — слушать вопрос сразу. Как пробел он не работает: короткий
+  // клик пробел понимает как «прочитай», и Ноа перечитывала последний ответ.
+  view.onMic = (down) => {
+    if (down) api.invoke("popup_listen").catch(() => {});
+  };
+  view.onOpenSettings = () => {
+    api.invoke("open_settings", { section: "model" }).catch(() => {});
+  };
+
+  // Расшифрованный вопрос: кладём в тред и ждём ответа.
+  api.listen("voice:question", (event) => {
+    view.askByVoice(event.payload);
+  });
+
+  // Ответ на голосовой вопрос читаем вслух — круг замыкается.
+  view.onAnswer = (answer) => {
+    reading();
+    api.invoke("voice_speak", { text: answer }).catch(quiet);
+  };
+
+  // Окно спрятали со стороны Rust — Esc, конец разговора. Незаконченные
+  // запросы отменяются: иначе ответ, пришедший после Esc, прочитался бы вслух.
+  api.listen("popup:closed", () => {
+    quiet();
+    view.close();
+  });
+
+  // Идёт запись голоса — показываем, что слушаем.
+  api.listen("voice:listening", (event) => {
+    view.listening = Boolean(event.payload);
+  });
+
+  // На мобильных вход другой: текст приходит из нативного плагина.
+  attachMobileEntry(api, (term) => view.open({ term, context: "" }));
+} else {
+  applyTheme("system");
+  view.open({ term: "альбедо", context: "" });
+}
+
+// Esc внутри окна: работает, когда фокус всё-таки здесь (пользователь кликнул в поле
+// «Спросить ещё…»). Esc при фокусе в чужом приложении ловит Rust — окно намеренно
+// не забирает фокус, и до него клавиатурные события не доходят.
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key !== "Escape") return;
+    // Первый Esc — голосу, второй — окну: если это нажатие заставило Ноа
+    // замолчать, окно остаётся.
+    const toVoice = api ? api.invoke("esc_went_to_voice").catch(() => false) : Promise.resolve(false);
+    toVoice.then((went) => {
+      if (!went) close();
+    });
+  },
+  true,
+);

@@ -1,0 +1,786 @@
+/* Окно практики: слева терминал, справа Ноа. Язык окна — тот же, что у
+   обучения (learning.css подключён раньше): кнопки, схема, кольцо. Здесь —
+   только раскладка и лента замечаний. Терминал тёмный в любой теме: вывод
+   серверов и цвета ls рассчитаны на тёмный фон. */
+
+:root {
+  --term-bg: #16130f;
+  --coach-width: 420px;
+}
+
+.head__spacer {
+  margin-left: auto;
+}
+
+.practice {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6px var(--coach-width);
+}
+
+/* Границы частей окна — тянутся мышью (practice.js). */
+.practice__split,
+.coach__split {
+  position: relative;
+  flex: none;
+  background: transparent;
+  touch-action: none;
+}
+.practice__split {
+  cursor: col-resize;
+  border-left: 1px solid var(--divider);
+}
+.coach__split {
+  height: 9px;
+  margin: -6px 0 -4px;
+  cursor: row-resize;
+}
+.practice__split::after,
+.coach__split::after {
+  content: "";
+  position: absolute;
+  border-radius: 2px;
+  background: var(--divider);
+  transition: background 0.15s;
+}
+.practice__split::after {
+  top: 50%;
+  left: 1px;
+  width: 3px;
+  height: 36px;
+  transform: translateY(-50%);
+}
+.coach__split::after {
+  left: 50%;
+  top: 3px;
+  width: 36px;
+  height: 3px;
+  transform: translateX(-50%);
+}
+.practice__split:hover::after,
+.coach__split:hover::after,
+.is-dragging::after {
+  background: var(--accent);
+}
+
+/* ── Терминал ──────────────────────────────────────────────────────────── */
+
+.practice__term {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--term-bg);
+}
+
+/* ── Подключение к серверу (телефон) ───────────────────────────────────── */
+
+.connect {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px 24px;
+  overflow-y: auto;
+  background: var(--term-bg);
+  color: #f2ece1;
+}
+.connect[hidden] {
+  display: none !important;
+}
+.connect__title {
+  margin: 0;
+  font-size: 20px;
+}
+.connect__lead,
+.connect__key p {
+  margin: 0;
+  color: rgb(242 236 225 / 0.7);
+  font-size: 14px;
+}
+.connect label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: rgb(242 236 225 / 0.75);
+}
+.connect input,
+.connect textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.06);
+  color: #f2ece1;
+  font: 16px var(--font-mono);
+}
+.connect textarea {
+  font-size: 12px;
+  resize: none;
+  word-break: break-all;
+}
+.connect__row {
+  display: flex;
+  gap: 10px;
+}
+.connect__row label {
+  flex: 1;
+}
+.connect__row .connect__port {
+  flex: 0 0 84px;
+}
+.connect__key summary {
+  cursor: pointer;
+  color: #f2c14e;
+}
+.connect__key[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.connect__error {
+  margin: 0;
+  color: #ff8a80;
+  font-size: 14px;
+}
+.connect__error:empty {
+  display: none;
+}
+
+/* Клавиши, которых нет на клавиатуре телефона. */
+.keys {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  background: #100e0b;
+}
+.keys[hidden] {
+  display: none !important;
+}
+.keys__key {
+  flex: none;
+  min-width: 44px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.06);
+  color: #f2ece1;
+  font: 14px var(--font-mono);
+}
+.keys__key.is-on {
+  border-color: #f2c14e;
+  color: #f2c14e;
+}
+
+/* ── Телефон: терминал сверху, Ноа снизу ───────────────────────────────── */
+
+html.is-phone body {
+  padding-top: var(--inset-top, 0px);
+  padding-bottom: var(--inset-bottom, 0px);
+  box-sizing: border-box;
+}
+
+@media (max-width: 760px) {
+  .practice {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 52%) minmax(0, 48%);
+  }
+  .practice__split {
+    display: none;
+  }
+  /* Панель Ноа прокручивается целиком: шаг, картина, лента; вопрос — внизу. */
+  .coach {
+    border-top: 1px solid var(--divider);
+    padding: 10px 12px 0;
+    gap: 8px;
+    overflow-y: auto;
+  }
+  .coach__body {
+    flex: none;
+    overflow: visible;
+  }
+  .coach__split {
+    display: none;
+  }
+  .coach__feed {
+    flex: none;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+  .coach__ask {
+    position: sticky;
+    bottom: 0;
+    padding: 6px 0 8px;
+    background: var(--bg-solid);
+  }
+  .coach__orb {
+    width: 80px;
+    height: 40px;
+    margin: -4px -8px -4px -10px;
+  }
+  .practice__term-hint {
+    display: none;
+  }
+  .coach__step {
+    padding: 10px 12px;
+  }
+  .coach__step-title {
+    font-size: 16px;
+    line-height: 21px;
+  }
+}
+
+.practice__term-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 14px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: rgb(242 236 225 / 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.practice__term-bar code {
+  color: rgb(242 236 225 / 0.9);
+}
+
+.practice__term-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Видит ли Ноа терминал — всегда на виду: вывод уходит модели. */
+.practice__eye {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8fd19e;
+}
+.practice__eye::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.practice__eye.is-off {
+  color: rgb(242 236 225 / 0.45);
+}
+
+.practice__screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 4px 4px 12px;
+}
+
+.practice__screen .xterm {
+  height: 100%;
+}
+
+/* Фон под строками — тот же, что у полосы терминала, а не чёрный xterm. */
+.practice__screen .xterm-viewport,
+.practice__screen .xterm-screen {
+  background-color: var(--term-bg) !important;
+}
+
+/* ── Ноа ───────────────────────────────────────────────────────────────── */
+
+.coach {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px 16px 12px;
+  overflow: hidden;
+}
+
+.coach__stage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.coach__orb {
+  flex: none;
+  width: 120px;
+  height: 60px;
+  margin: -6px -14px -6px -18px;
+}
+
+.coach__now {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.coach__status {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.coach__sub {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coach__toggles {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-toggle {
+  width: 32px;
+  height: 30px;
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.icon-toggle[aria-pressed="false"] {
+  opacity: 0.45;
+}
+.icon-toggle:hover {
+  background: var(--btn-hover-bg);
+}
+
+/* Текущий шаг — главное на панели. */
+.coach__step {
+  padding: 12px 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-solid));
+}
+
+.coach__step-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.coach__step-title {
+  margin: 4px 0 6px;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.coach__step-goal {
+  margin: 0;
+}
+
+.coach__step-why,
+.coach__step-check {
+  margin: 6px 0 0;
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+
+.coach__step-check b {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.coach__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.coach__actions .button {
+  padding: 6px 12px;
+}
+
+.coach__picture .scheme {
+  padding: 8px 10px 4px;
+}
+
+.coach__picture .scheme__svg {
+  min-width: 0;
+}
+
+.coach__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+/* Где сейчас работа — блок картины обведён и подсвечен. */
+.scheme__box--here {
+  stroke-width: 3;
+  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--accent) 26%, var(--bg-solid));
+}
+
+.coach details > summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.coach__steps {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+.coach__steps li.is-done {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.coach__steps li.is-now {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Лента замечаний: свежее внизу, прокручивается сама. */
+.coach__feed {
+  flex: 0 0 var(--feed-height, 34%);
+  min-height: 90px;
+  padding-top: 6px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.line {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--divider);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  line-height: 1.45;
+}
+.line code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+.line--me {
+  align-self: flex-end;
+  max-width: 85%;
+  border-left: 0;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.line--error {
+  border-left-color: var(--bad);
+}
+.line--step {
+  border-left-color: var(--good);
+}
+.line--hint {
+  border-left-color: var(--accent);
+  color: var(--text-muted);
+}
+.line--overview {
+  border-left-color: color-mix(in srgb, var(--warn, #f2c14e) 80%, var(--text));
+}
+
+.coach__ask {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.coach__ask .answer {
+  min-height: 42px;
+  height: 42px;
+  resize: none;
+}
+
+.coach__mic[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  opacity: 1;
+}
+
+.coach__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--size-secondary);
+}
+
+.link {
+  flex: none;
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link:hover {
+  color: var(--text);
+}
+
+/* ── Начало: что строим ────────────────────────────────────────────────── */
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.setup h2 {
+  margin: 4px 0 0;
+  font-family: var(--font-display, inherit);
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.setup p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.setup .answer {
+  min-height: 70px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 6px 10px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--size-secondary);
+}
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip--topic {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.setup__error {
+  color: var(--bad);
+}
+
+@media (max-width: 1100px) {
+  :root {
+    --coach-width: 360px;
+  }
+}
+
+/* Понятие урока, которое шаг отрабатывает. */
+.coach__concept {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: var(--size-secondary);
+}
+
+/* Выбор темы для практики. */
+.setup .setup__course {
+  min-height: 0;
+  height: auto;
+  padding: 7px 10px;
+}
+
+.topics-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topic-pick {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.topic-pick:hover {
+  border-color: var(--accent);
+}
+.topic-pick[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font-weight: 600;
+}
+.topic-pick__mark {
+  width: 1.2em;
+  flex: none;
+  color: var(--good);
+}
+
+.topic-pick__title {
+  flex: 1;
+}
+
+/* Своя практика темы: на каком шаге или пройдена. */
+.topic-pick__state {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.topic-pick__state:empty {
+  display: none;
+}
+
+.coach__foot {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+/* ── Действия Ноа: команда или файл под репликой ──────────────────────── */
+
+.line__text {
+  margin: 0;
+}
+
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--term-bg) 6%, var(--bg-solid));
+}
+
+.act--danger {
+  border-color: var(--bad);
+}
+
+.line .act__cmd {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--term-bg);
+  color: #f2ece1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.line .act__what code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+.act__note {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bad) 15%, transparent);
+  color: var(--bad);
+  font-size: 11px;
+}
+
+.act__peek summary {
+  cursor: pointer;
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+
+.act__peek pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--term-bg);
+  color: #f2ece1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.act__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.act__buttons .button {
+  padding: 4px 10px;
+}
+
+.setup__task {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+}
+
+.setup__task h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+/* «Терминал»: задача по желанию — одной строкой. */
+.coach__task-line {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coach__task-line .answer {
+  min-height: 42px;
+}
+
+.coach__task-line .button {
+  align-self: flex-start;
+}

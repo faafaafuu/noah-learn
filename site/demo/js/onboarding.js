@@ -1,0 +1,2000 @@
+// Окно «доступ и настройка»: показывает, чего именно не хватает системной интеграции.
+
+import { tauri, appWindow, applyTheme } from "./bridge.js";
+import { icon, mountIcons } from "./icons.js";
+import { PopupView } from "./popup-view.js";
+import { TauriProvider, DEFAULT_ERROR_TEXT } from "./ai-client.js";
+import { attachMobileEntry } from "./mobile-entry.js";
+import { attachPhone } from "./phone.js";
+import { LANGUAGES, setLanguage, t, translateDom } from "./i18n.js";
+
+const api = tauri();
+const ui = {};
+for (const node of document.querySelectorAll("[data-el]")) ui[node.dataset.el] = node;
+
+/* ── Пояснения под «?» ──────────────────────────────────────────────────── */
+
+/**
+ * Постоянные пояснения к полям прячутся за кнопкой «?» рядом с заголовком.
+ * Строки состояния (с data-el) остаются на виду: их пишет код, и они сообщают,
+ * что происходит сейчас.
+ */
+function tuckHints() {
+  const groups = new Map();
+  const bodies = document.querySelectorAll(
+    ".ob__lead:not([data-el]):not([data-keep]), .ob__hint:not([data-el]):not([data-keep])",
+  );
+  for (const body of bodies) {
+    const check = body.closest(".ob__check-text");
+    let anchor = check ? check.firstElementChild : body.previousElementSibling;
+    while (anchor?.classList.contains("ob__tip-body")) anchor = anchor.previousElementSibling;
+    if (!anchor || anchor === body) continue;
+    body.classList.add("ob__tip-body");
+    body.hidden = true;
+    if (!groups.has(anchor)) groups.set(anchor, []);
+    groups.get(anchor).push(body);
+  }
+  for (const [anchor, parts] of groups) {
+    const row = document.createElement("div");
+    row.className = "ob__tip-row";
+    anchor.before(row);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ob__tip";
+    button.textContent = "?";
+    button.setAttribute("aria-expanded", "false");
+    // Кнопка бывает внутри <label>: без preventDefault щелчок переключил бы флажок.
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = parts[0].hidden;
+      for (const part of parts) part.hidden = !open;
+      button.setAttribute("aria-expanded", String(open));
+    });
+    row.append(anchor, button);
+  }
+}
+tuckHints();
+
+// Тему и язык Rust проставил до первого кадра — здесь только подхватываем,
+// чтобы не сбросить их обратно на значения по умолчанию.
+const injected = globalThis.__SUFLER_VIEW__;
+
+/* ── Вид: тема и язык ───────────────────────────────────────────────────── */
+
+/** Темы в порядке меню. Названия переводятся, коды — нет. */
+const THEMES = ["noah", "system", "light", "dark", "neon", "synthwave"];
+
+let view = { theme: injected?.theme ?? "system", language: injected?.language ?? "ru" };
+
+/**
+ * Перерисовывает всё, что зависит от языка.
+ *
+ * Дважды: сначала статическая разметка по data-i18n, затем живые части —
+ * список моделей и строка перехвата собираются кодом и о разметке не знают.
+ */
+function applyLanguage(code) {
+  setLanguage(code);
+  translateDom();
+  renderViewMenu();
+  refreshCapture();
+  if (ui.preset) applyPreset(ui.preset.value, { keepValues: true });
+  if (!ui.modelsBlock.hidden) redraw();
+}
+
+function renderViewMenu() {
+  const group = (list, current, onPick, className) => {
+    const box = document.createElement("div");
+    for (const item of list) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-checked", String(item.code === current));
+      button.addEventListener("click", () => onPick(item.code));
+      // Тема — образцом: плитка в цветах самой темы и подпись под ней.
+      if (item.swatch) {
+        const tile = document.createElement("span");
+        tile.className = "swatch__tile";
+        tile.dataset.theme = item.code;
+        tile.append(document.createElement("i"), document.createElement("i"));
+        const label = document.createElement("span");
+        label.textContent = item.label;
+        button.append(tile, label);
+      } else {
+        button.textContent = item.label;
+      }
+      box.append(button);
+    }
+    return box.children;
+  };
+
+  ui.themeList.replaceChildren(
+    ...group(
+      THEMES.map((code) => ({ code, label: t(`theme.${code}`), swatch: true })),
+      view.theme,
+      (code) => saveView({ ...view, theme: code }),
+      "swatch",
+    ),
+  );
+  ui.langList.replaceChildren(
+    ...group(LANGUAGES, view.language, (code) => saveView({ ...view, language: code }), "segmented__item"),
+  );
+}
+
+async function saveView(next) {
+  view = next;
+  applyTheme(view.theme);
+  applyLanguage(view.language);
+  try {
+    await api?.invoke("save_appearance", { appearance: view });
+  } catch (err) {
+    ui.aiStatus.textContent = `${err}`;
+  }
+}
+
+async function loadView() {
+  // Язык применяем сразу, из подставленного Rust значения: ждать ответа по IPC
+  // значило бы показать секунду русского текста человеку, выбравшему английский.
+  applyTheme(view.theme);
+  applyLanguage(view.language);
+  if (!api) return;
+
+  // Перечитываем на случай, если настройки поменяли в обход этого окна.
+  try {
+    const fresh = await api.invoke("appearance");
+    if (fresh.theme === view.theme && fresh.language === view.language) return;
+    view = fresh;
+    applyTheme(view.theme);
+    applyLanguage(view.language);
+  } catch {
+    /* окно открыто вне приложения — остаёмся на подставленных значениях */
+  }
+}
+
+/* ── Заголовок окна ────────────────────────────────────────────────────── */
+
+// Рамку окно рисует само: двигают за заголовок, тянут за края, кнопки —
+// свернуть и закрыть. На телефоне заголовка нет (см. CSS), рамки там нет вовсе.
+mountIcons();
+ui.winMin.append(icon("minimize"));
+ui.winClose.append(icon("close"));
+const win = appWindow();
+ui.winMin.addEventListener("click", () => win?.minimize());
+ui.winClose.addEventListener("click", () => win?.close());
+ui.titlebar.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0 || event.target.closest("button")) return;
+  event.preventDefault();
+  win?.startDragging();
+});
+ui.titlebar.addEventListener("dblclick", (event) => {
+  if (event.target.closest("button")) return;
+  win?.toggleMaximize?.();
+});
+
+const EDGES = { n: "North", s: "South", e: "East", w: "West", ne: "NorthEast", nw: "NorthWest", se: "SouthEast", sw: "SouthWest" };
+if (win) {
+  for (const edge of Object.keys(EDGES)) {
+    const grip = document.createElement("span");
+    grip.className = `grip grip--${edge}`;
+    grip.dataset.edge = edge;
+    grip.setAttribute("aria-hidden", "true");
+    grip.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      win.startResizeDragging(EDGES[edge]);
+    });
+    document.body.append(grip);
+  }
+}
+
+/* ── Помощь: обновление, клавиши, журнал ───────────────────────────────── */
+
+const helpPane = document.querySelector('[data-pane="help"]');
+function showSub(name) {
+  helpPane.dataset.sub = name;
+  for (const button of helpPane.querySelectorAll("[data-sub]")) {
+    if (button.tagName === "BUTTON") button.setAttribute("aria-selected", String(button.dataset.sub === name));
+  }
+}
+for (const button of helpPane.querySelectorAll("button[data-sub]")) {
+  button.addEventListener("click", () => showSub(button.dataset.sub));
+}
+
+/**
+ * Телефон это или компьютер — приходит из Rust, где известно на этапе сборки.
+ *
+ * Окно настройки одно на все системы, но часть его верна только на компьютере:
+ * ни трея, ни левого Ctrl, ни локальной Ollama на телефоне нет.
+ */
+let isMobile = false;
+
+async function applyPlatform() {
+  if (!api) return;
+  let config;
+  try {
+    config = await api.invoke("runtime_config");
+    isMobile = Boolean(config.mobile);
+  } catch {
+    // Не узнали — остаёмся на настольном варианте: он и был всё это время.
+    return;
+  }
+  if (!isMobile) return;
+
+  document.documentElement.classList.add("is-phone");
+  ui.note.textContent = t("note.mobile");
+  ui.heroLead.textContent =
+    "Голосовой помощник и его модули. Коснитесь микрофона на вкладке «Ноа» или напишите — " +
+    "он ответит вслух, поставит напоминание, откроет модуль.";
+  // Проверка перехвата — про мышь и левый Ctrl, на телефоне проверять нечего.
+  ui.captureBlock.hidden = true;
+  ui.connectCommand.placeholder = "https://…/mcp";
+  // «Запуск при входе в систему» — понятие настольное: на телефоне вход в
+  // систему один раз в жизни, а приложения запускает пользователь.
+  ui.startupBlock.hidden = true;
+
+  const explain = attachExplainOverlay(config);
+  attachPhone(api, ui, { explain, show: () => showTab("noa") });
+  ui.assistantSettings.addEventListener("click", () => {
+    api.invoke("plugin:sufler|openAssistantSettings").catch((err) => {
+      ui.voiceStatus.textContent = String(err);
+    });
+  });
+  if (ui.updateInstall) ui.updateInstall.textContent = "Скачать новую версию";
+  // Напоминания и будильники, когда приложение свёрнуто, приходят в шторку —
+  // разрешение спрашиваем сразу, с экрана, а не из фона.
+  api.invoke("plugin:sufler|allowNotifications").catch(() => {});
+}
+
+/**
+ * Показ объяснения поверх настроек — только на телефоне.
+ *
+ * На компьютере попап живёт отдельным окном, которое Rust ставит рядом с
+ * выделенным словом. На телефоне окон не бывает: приложение занимает экран
+ * целиком, и второму окну взяться неоткуда. Поэтому текст из пункта «Объяснить»
+ * показываем прямо здесь, поверх настроек.
+ *
+ * Сама связка «нативный плагин → событие → попап» была написана давно и лежала
+ * без дела: её подключал popup-window.js, а он на телефоне не открывается —
+ * там главным окном идёт эта страница. Отсюда и тишина в ответ на пункт меню.
+ */
+function attachExplainOverlay(config) {
+  const view = new PopupView({
+    client: new TauriProvider(api.invoke),
+    errorText: config.errorText || DEFAULT_ERROR_TEXT,
+    dialogue: Boolean(config.dialogue),
+    // Размер окна на телефоне не наш: страница и так во весь экран.
+    onGeometry: () => {},
+    onClose: () => {
+      ui.overlay.hidden = true;
+      view.close();
+    },
+  });
+  ui.overlayMount.append(view.el);
+
+  ui.overlayClose.addEventListener("click", () => {
+    ui.overlay.hidden = true;
+    view.close();
+  });
+
+  const explain = (term) => {
+    ui.overlay.hidden = false;
+    view.open({ term, context: "" });
+  };
+  attachMobileEntry(api, explain);
+  return explain;
+}
+
+const READY = {
+  title: "Всё готово",
+  hint: "Выделите текст в любом приложении, удерживая левый Ctrl — рядом появится объяснение.",
+};
+
+async function refresh() {
+  if (!api) {
+    render({
+      title: "Режим без системной интеграции",
+      hint: "Окно открыто вне приложения, поэтому статус разрешений недоступен.",
+      canOpenSettings: false,
+    });
+    return;
+  }
+
+  try {
+    const status = await api.invoke("integration_status");
+    if (status.kind === "ready") {
+      render({ ...READY, canOpenSettings: false, ready: true });
+      return;
+    }
+    render({
+      title: status.title,
+      hint: status.hint,
+      // Кнопку показываем только там, где системе действительно есть что открыть.
+      canOpenSettings: status.kind === "needsPermission",
+      ready: false,
+    });
+  } catch (err) {
+    render({
+      title: "Не удалось проверить доступ",
+      hint: String(err),
+      canOpenSettings: false,
+      ready: false,
+    });
+  }
+}
+
+function render({ title, hint, canOpenSettings, ready }) {
+  ui.title.textContent = title;
+  ui.hint.textContent = hint;
+  ui.settings.hidden = !canOpenSettings;
+
+  // «Всё готово» — сообщение, которое читают один раз, а место оно занимало
+  // всегда, отодвигая вниз единственное, зачем окно открывают: выбор источника.
+  // Когда доступ есть, заголовок и кнопка проверки не нужны — они переезжают
+  // в раздел «Если что-то не работает», где их и станут искать. Когда доступа
+  // нет, всё наоборот: это главное сообщение окна, и оно наверху.
+  ui.status.hidden = ready;
+  ui.recheckHere.hidden = !ready;
+}
+
+/* ── Проверка перехвата ─────────────────────────────────────────────────── */
+
+/**
+ * Превращает счётчики наблюдателя в одну строку для пользователя.
+ *
+ * Что приходит в diag:
+ *   gestures — сколько раз поймали жест «отпустил мышь с зажатым левым Ctrl»;
+ *   captured — сколько раз из них удалось достать текст;
+ *   last     — что случилось в последний раз, уже человеческим языком;
+ *   source   — «UI Automation», «буфер обмена» или «—».
+ *
+ * Возвращает { text, state }, где state: "idle" | "ok" | "warn" —
+ * по нему строка красится в нейтральный, акцентный или тревожный цвет.
+ */
+function verdictFor(diag) {
+  const { gestures = 0, captured = 0, last = "", source = "" } = diag ?? {};
+
+  if (gestures === 0) {
+    return { text: t("capture.idle"), state: "idle" };
+  }
+
+  if (captured === 0) {
+    return {
+      text: `${t("capture.noText")} (${gestures})\n${t("capture.last")} ${last}`,
+      state: "warn",
+    };
+  }
+
+  // Захваты есть, но последняя попытка провалилась. Тревожным это не считаем:
+  // среди программ всегда найдётся одна упрямая, и красить строку в цвет ошибки
+  // из-за неё — значит приучить пользователя не верить этой строке вообще.
+  const lastFailed = source === "—";
+  return {
+    text:
+      `${t("capture.works")} ${captured} ${t("capture.of")} ${gestures}.` +
+      (lastFailed ? "" : ` ${t("capture.source")} ${source}.`) +
+      `\n${t("capture.last")} ${last}`,
+    state: lastFailed ? "idle" : "ok",
+  };
+}
+
+async function refreshCapture() {
+  if (!api) return;
+  try {
+    const diag = await api.invoke("capture_diagnostics");
+    const { text, state } = verdictFor(diag) ?? { text: "", state: "idle" };
+    ui.capture.textContent = text;
+    ui.capture.dataset.state = state;
+    // Диагностика нужна ровно тогда, когда перехват не сработал, — тогда и
+    // показываем её сами. Закрывать раздел обратно не станем: человек его уже
+    // увидел и вправе решать сам, когда свернуть.
+    if (state === "warn") {
+      ui.advanced.open = true;
+      // Вкладка «Помощь» может быть закрыта — отметка на ней зовёт туда.
+      if (ui.tabHelp.getAttribute("aria-selected") !== "true") ui.tabHelp.classList.add("ob__tab--alert");
+    }
+  } catch {
+    // Молча: команда опрашивается раз в секунду, и сыпать ошибками в окно,
+    // пока пользователь читает соседний раздел, — только мешать.
+  }
+}
+
+// Опрос, а не событие: наблюдатель живёт в своём потоке и ничего не знает об окне,
+// а раз в секунду — достаточно часто, чтобы строка казалась живой.
+setInterval(refreshCapture, 1000);
+
+ui.clipboardFallback.addEventListener("change", async () => {
+  if (!api) return;
+  try {
+    const settings = await api.invoke("trigger_settings");
+    settings.clipboardFallback = ui.clipboardFallback.checked;
+    await api.invoke("save_trigger_settings", { settings });
+  } catch (err) {
+    ui.capture.textContent = `Не удалось сохранить: ${err}`;
+    ui.capture.dataset.state = "warn";
+  }
+});
+
+/* ── Голос ──────────────────────────────────────────────────────────────── */
+
+// Списки голосов приходят из Rust: там же лежит и то, что скачано.
+let voiceLists = { piper: [], azure: [], silero: [] };
+
+/** Каким полем настроек хранится голос у каждого способа. */
+const VOICE_FIELD = { piper: "voice", azure: "edgeVoice", silero: "sileroVoice" };
+
+function fillVoiceList() {
+  const engine = voiceLists[ui.voiceEngine.value] ? ui.voiceEngine.value : "piper";
+  ui.azureFields.hidden = engine !== "azure";
+  const list = voiceLists[engine] ?? [];
+  const chosen = ui.voiceName.value;
+
+  ui.voiceName.replaceChildren();
+  for (const { id, label } of list) {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = label;
+    ui.voiceName.append(option);
+  }
+  // Сохраняем выбор, если он есть в новом списке: переключение туда-обратно
+  // не должно сбрасывать голос.
+  if (list.some((v) => v.id === chosen)) ui.voiceName.value = chosen;
+}
+
+async function loadVoice() {
+  if (!api) return;
+  try {
+    voiceLists = await api.invoke("voice_list");
+    const settings = await api.invoke("voice_settings");
+
+    ui.voiceEnabled.checked = settings.enabled;
+    ui.voiceEngine.value = settings.engine;
+    fillVoiceList();
+    ui.voiceName.value = settings[VOICE_FIELD[settings.engine] ?? "voice"];
+    ui.azureRegion.value = settings.azureRegion || "";
+    ui.azureKey.value = "";
+    ui.azureKey.placeholder = settings.azureKey ? "ключ сохранён" : "ключ из «Ключи и конечная точка»";
+    ui.voiceRate.value = String(settings.rate ?? 1);
+    ui.voiceRateValue.textContent = "×" + Number(ui.voiceRate.value).toFixed(1);
+    ui.voiceFields.hidden = !settings.enabled;
+    // Голос не скачан — предлагаем скачать, а не делаем вид, что всё готово.
+    ui.voiceDownload.hidden = settings.ready || settings.engine === "azure";
+  } catch {
+    /* окно открыто вне приложения */
+  }
+}
+
+async function saveVoice() {
+  if (!api) return;
+  const engine = ui.voiceEngine.value;
+  const settings = {
+    enabled: ui.voiceEnabled.checked,
+    engine,
+    // Голос у каждого способа свой: пишем только тот, который сейчас виден,
+    // второй оставляем как был.
+    voice: engine === "piper" ? ui.voiceName.value : undefined,
+    edgeVoice: engine === "azure" ? ui.voiceName.value : undefined,
+    sileroVoice: engine === "silero" ? ui.voiceName.value : "",
+    // Пусто — ключ не меняется: в окно он приходит только маской.
+    azureKey: ui.azureKey.value.trim(),
+    azureRegion: ui.azureRegion.value.trim(),
+    wakeWord: ui.wakeWord.checked,
+    wakeName: ui.wakeName.value.trim(),
+    inputDevice: ui.speechDevice.value,
+    rate: Number(ui.voiceRate.value),
+    speakAnswers: false,
+  };
+  try {
+    const current = await api.invoke("voice_settings");
+    settings.voice ??= current.voice;
+    settings.edgeVoice ??= current.edgeVoice;
+    settings.speakAnswers = current.speakAnswers;
+    await api.invoke("save_voice_settings", { settings });
+    if (settings.azureKey) {
+      ui.azureKey.value = "";
+      ui.azureKey.placeholder = "ключ сохранён";
+    }
+    ui.voiceDownload.hidden = engine === "azure" || (await api.invoke("voice_settings")).ready;
+  } catch (err) {
+    ui.voiceStatus.textContent = String(err);
+  }
+}
+
+ui.voiceEnabled.addEventListener("change", () => {
+  ui.voiceFields.hidden = !ui.voiceEnabled.checked;
+  saveVoice();
+});
+ui.voiceEngine.addEventListener("change", () => {
+  fillVoiceList();
+  saveVoice();
+});
+ui.voiceName.addEventListener("change", saveVoice);
+ui.azureKey.addEventListener("change", saveVoice);
+ui.azureRegion.addEventListener("change", saveVoice);
+ui.voiceRate.addEventListener("input", () => {
+  ui.voiceRateValue.textContent = "×" + Number(ui.voiceRate.value).toFixed(1);
+});
+ui.voiceRate.addEventListener("change", saveVoice);
+
+ui.voiceTest.addEventListener("click", async () => {
+  if (!api) return;
+  ui.voiceStatus.textContent = "";
+  try {
+    await saveVoice();
+    // У Azure сначала пробный запрос: при неудаче озвучивание тихо уйдёт на
+    // свой голос, и без этого человек не узнал бы почему.
+    if (ui.voiceEngine.value === "azure") {
+      try {
+        await api.invoke("azure_check");
+      } catch (err) {
+        ui.voiceStatus.textContent = `${err} — пока звучит свой голос.`;
+      }
+    }
+    await api.invoke("voice_speak", { text: t("voice.sample") });
+  } catch (err) {
+    ui.voiceStatus.textContent = String(err);
+  }
+});
+
+ui.voiceDownload.addEventListener("click", async () => {
+  if (!api) return;
+  ui.voiceDownload.disabled = true;
+  ui.voiceStatus.textContent = t("voice.downloading");
+  try {
+    if (ui.voiceEngine.value === "silero") {
+      await api.invoke("silero_install");
+    } else {
+      await api.invoke("voice_install", { voice: ui.voiceName.value });
+    }
+    ui.voiceStatus.textContent = t("voice.ready");
+    ui.voiceDownload.hidden = true;
+  } catch (err) {
+    ui.voiceStatus.textContent = String(err);
+  } finally {
+    ui.voiceDownload.disabled = false;
+  }
+});
+
+// Сочетание клавиш включает и выключает ожидание мимо этого окна — галочка
+// должна следовать за ним, иначе она показывает вчерашнюю правду.
+/* ── Уведомления в Telegram ───────────────────────────────────────────── */
+
+async function loadTelegram() {
+  const telegram = await api?.invoke("telegram_settings").catch(() => null);
+  if (!telegram) {
+    if (ui.telegramBlock) ui.telegramBlock.hidden = true;
+    return;
+  }
+  ui.telegramToken.value = telegram.token;
+  ui.telegramStatus.textContent = telegram.chatId
+    ? "Подключено: оповещения придут в Telegram"
+    : telegram.token
+      ? "Токен сохранён — напишите боту и нажмите «Проверить»"
+      : "";
+}
+
+ui.telegramToken?.addEventListener("change", async () => {
+  try {
+    await api?.invoke("save_telegram_settings", {
+      settings: { token: ui.telegramToken.value, chatId: "" },
+    });
+  } catch (err) {
+    ui.telegramStatus.textContent = `Не сохранилось: ${err}`;
+    return;
+  }
+  loadTelegram();
+});
+
+ui.telegramTest?.addEventListener("click", async () => {
+  ui.telegramStatus.textContent = "Проверяю…";
+  try {
+    ui.telegramStatus.textContent = await api?.invoke("telegram_test");
+  } catch (err) {
+    ui.telegramStatus.textContent = String(err);
+  }
+});
+
+loadTelegram();
+
+/**
+ * Прокручивает к разделу.
+ *
+ * Так «Ноа, открой настройки заказов» попадает сразу в «Заказы», а не в начало
+ * длинного окна, где до них ещё листать и листать.
+ */
+function showSection(section) {
+  if (!section) return;
+  showTab("settings");
+  document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ── Вкладки и модули ───────────────────────────────────────────────────── */
+
+const TAB_KEY = "ob.tab";
+
+function showTab(name) {
+  for (const pane of document.querySelectorAll("[data-pane]")) pane.hidden = pane.dataset.pane !== name;
+  for (const tab of document.querySelectorAll("[data-tab]")) {
+    tab.setAttribute("aria-selected", String(tab.dataset.tab === name));
+  }
+  if (name === "help") ui.tabHelp.classList.remove("ob__tab--alert");
+  try {
+    localStorage.setItem(TAB_KEY, name);
+  } catch {
+    /* выбор просто не запомнится */
+  }
+  if (name === "modules") loadModules();
+}
+
+for (const tab of document.querySelectorAll("[data-tab]")) {
+  tab.addEventListener("click", () => showTab(tab.dataset.tab));
+}
+
+/** Где в настройках живёт раздел модуля. */
+const MODULE_SETTINGS = { telegram: "telegram" };
+
+function moduleCard(module) {
+  const card = document.createElement("article");
+  card.className = "mod";
+  const line = (className, text) => {
+    const node = document.createElement(className === "mod__title" || className === "mod__icon" ? "span" : "p");
+    node.className = className;
+    node.textContent = text;
+    return node;
+  };
+  const head = document.createElement("div");
+  head.className = "mod__head";
+  head.append(line("mod__icon", module.icon), line("mod__title", module.title));
+  const actions = document.createElement("div");
+  actions.className = "mod__actions";
+  if (module.window) {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "ob__btn ob__btn--primary mod__btn";
+    open.textContent = "Открыть";
+    open.addEventListener("click", () => api?.invoke("open_module", { id: module.id }).catch(() => {}));
+    actions.append(open);
+  }
+  // Ключи модуля с окном вводятся в самом окне: настройки принадлежат модулю.
+  // Кнопка остаётся только у модулей без окна — им больше негде.
+  if (module.custom && module.secrets && !module.window) {
+    const keys = document.createElement("button");
+    keys.type = "button";
+    keys.className = "ob__btn ob__btn--primary mod__btn";
+    keys.textContent = "Ключи";
+    keys.addEventListener("click", () => toggleKeys(card, module));
+    actions.append(keys);
+  }
+  if (module.custom) {
+    const check = document.createElement("button");
+    check.type = "button";
+    check.className = "ob__btn ob__btn--quiet mod__btn";
+    check.textContent = "Проверить";
+    check.addEventListener("click", async () => {
+      check.disabled = true;
+      await api?.invoke("plugins_recheck", { id: module.id }).catch(() => {});
+      loadModules();
+    });
+    actions.append(check);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "ob__btn ob__btn--quiet mod__btn";
+    remove.textContent = "Удалить";
+    remove.addEventListener("click", async () => {
+      remove.disabled = true;
+      await api?.invoke("plugins_remove", { id: module.id }).catch(() => {});
+      loadModules();
+    });
+    actions.append(remove);
+  }
+  const section = MODULE_SETTINGS[module.id];
+  if (section) {
+    const tune = document.createElement("button");
+    tune.type = "button";
+    tune.className = "ob__btn ob__btn--quiet mod__btn";
+    tune.textContent = "Настроить";
+    tune.addEventListener("click", () => showSection(section));
+    actions.append(tune);
+  }
+  card.append(head, line("mod__about", module.about), line("mod__status", module.status), line("mod__voice", module.voice), actions);
+  return card;
+}
+
+/**
+ * Ключи своего модуля — прямо в плитке. Значения сюда не приходят: поле
+ * показывает только, введён ли ключ; пустое поле при сохранении ключ не трогает.
+ */
+async function toggleKeys(card, module) {
+  const open = card.querySelector(".mod__keys");
+  if (open) {
+    open.remove();
+    return;
+  }
+  let fields = [];
+  try {
+    fields = await api.invoke("plugins_secrets", { id: module.id });
+  } catch (err) {
+    return;
+  }
+  const form = document.createElement("form");
+  form.className = "mod__keys";
+  const inputs = {};
+  for (const field of fields) {
+    const label = document.createElement("span");
+    label.className = "ob__label";
+    label.textContent = field.optional ? `${field.title} (необязательно)` : field.title;
+    const input = document.createElement("input");
+    input.className = "ob__underline";
+    input.type = "password";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.placeholder = field.set ? "сохранён — оставьте пустым, чтобы не менять" : "вставьте ключ";
+    const hint = document.createElement("p");
+    hint.className = "mod__hint";
+    hint.textContent = field.hint;
+    inputs[field.name] = input;
+    form.append(label, input, hint);
+  }
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.className = "ob__btn ob__btn--primary mod__btn";
+  save.textContent = "Сохранить";
+  const note = document.createElement("p");
+  note.className = "mod__hint";
+  form.append(save, note);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(Object.entries(inputs).map(([name, input]) => [name, input.value]));
+    save.disabled = true;
+    try {
+      await api.invoke("plugins_save_secrets", { id: module.id, values });
+      form.remove();
+      loadModules();
+    } catch (err) {
+      note.textContent = String(err);
+      save.disabled = false;
+    }
+  });
+  card.append(form);
+  Object.values(inputs)[0]?.focus();
+}
+
+/** Пока модуль проверяется или запускается — обновлять плитки сами. */
+let modulesTimer = 0;
+const BUSY = /проверяется|запускается/;
+
+/** Установленные модули — по последнему ответу; библиотека сверяется с ними. */
+let knownModules = [];
+
+async function loadModules() {
+  if (!api) return;
+  try {
+    // Открытую форму ключей не сбрасываем: человек, может быть, печатает.
+    if (ui.modules.querySelector(".mod__keys")) return;
+    const modules = await api.invoke("modules_overview");
+    knownModules = modules;
+    // «Свой модуль» — последней плиткой той же сетки.
+    ui.modules.replaceChildren(...modules.map(moduleCard), ui.moduleAdd);
+    clearTimeout(modulesTimer);
+    if (modules.some((module) => module.custom && BUSY.test(module.status)) && !ui.modules.closest("[hidden]")) {
+      modulesTimer = setTimeout(loadModules, 2000);
+    }
+  } catch {
+    /* окно открыто вне приложения */
+  }
+}
+
+/** Пока модули запускаются, плитки обновляются сами. */
+function watchModules() {
+  let left = 40;
+  const timer = setInterval(async () => {
+    await loadModules();
+    const starting = knownModules.some((module) => module.custom && module.status.startsWith("запускается"));
+    if (!starting || --left <= 0) clearInterval(timer);
+  }, 3000);
+}
+
+function libraryCard(manifest) {
+  const installed = knownModules.some((module) => module.custom && module.id === manifest.id);
+  const card = moduleCard({ ...manifest, status: installed ? "установлен" : "", window: false, custom: false });
+  const actions = card.querySelector(".mod__actions");
+  const install = document.createElement("button");
+  install.type = "button";
+  install.className = "ob__btn ob__btn--primary mod__btn";
+  install.textContent = installed ? "Установлен" : "Поставить";
+  install.disabled = installed;
+  // На телефоне программы вроде npx и python запускать нечем — работают
+  // только модули по ссылке. Говорим об этом на плитке, а не ошибкой после.
+  const remote = /^https?:\/\//.test(manifest.mcp?.command ?? "");
+  if (isMobile && !remote && !installed) {
+    install.textContent = "Только на компьютере";
+    install.disabled = true;
+  }
+  install.addEventListener("click", async () => {
+    install.disabled = true;
+    install.textContent = "Ставлю…";
+    ui.libraryStatus.textContent = "Первый запуск скачивает пакет модуля — это может занять минуту.";
+    try {
+      await api.invoke("plugins_install", { manifest });
+      install.textContent = "Установлен";
+      await loadModules();
+      watchModules();
+    } catch (err) {
+      install.disabled = false;
+      install.textContent = "Поставить";
+      ui.libraryStatus.textContent = String(err);
+    }
+  });
+  actions.replaceChildren(install);
+  return card;
+}
+
+ui.libraryOpen.addEventListener("click", async () => {
+  ui.connectPanel.hidden = true;
+  ui.libraryPanel.hidden = !ui.libraryPanel.hidden;
+  if (ui.libraryPanel.hidden || !api) return;
+  ui.libraryStatus.textContent = "Загружаю библиотеку…";
+  try {
+    const library = await api.invoke("plugins_library");
+    ui.libraryList.replaceChildren(...library.map(libraryCard));
+    ui.libraryStatus.textContent = "Модулям из npm нужен Node.js (nodejs.org).";
+    ui.libraryPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) {
+    ui.libraryStatus.textContent = String(err);
+  }
+});
+
+ui.connectOpen.addEventListener("click", () => {
+  ui.libraryPanel.hidden = true;
+  ui.connectPanel.hidden = !ui.connectPanel.hidden;
+  if (!ui.connectPanel.hidden) {
+    ui.connectPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    ui.connectTitle.focus();
+  }
+});
+
+ui.connectSave.addEventListener("click", async () => {
+  if (!api) return;
+  ui.connectStatus.textContent = "Подключаю…";
+  try {
+    await api.invoke("plugins_connect", {
+      title: ui.connectTitle.value,
+      command: ui.connectCommand.value,
+      about: ui.connectAbout.value,
+      voice: ui.connectVoice.value,
+    });
+    ui.connectStatus.textContent = "Модуль добавлен и запускается — его плитка появилась выше.";
+    for (const field of [ui.connectTitle, ui.connectCommand, ui.connectAbout, ui.connectVoice]) field.value = "";
+    await loadModules();
+    watchModules();
+  } catch (err) {
+    ui.connectStatus.textContent = String(err);
+  }
+});
+
+/** Состояние одной строкой: какая модель, чем говорит, слушает ли имя. */
+async function loadChips() {
+  if (!api) return;
+  const chip = (text, on) => {
+    const node = document.createElement("span");
+    node.className = on ? "ob__chip ob__chip--on" : "ob__chip";
+    node.textContent = text;
+    return node;
+  };
+  try {
+    const [ai, voice] = await Promise.all([api.invoke("ai_settings"), api.invoke("voice_settings")]);
+    const local = /127\.0\.0\.1|localhost/.test(ai.endpoint || "");
+    const brain = ai.provider === "wikipedia" ? "Википедия" : `${ai.model || "модель"}${local ? "" : " · облако"}`;
+    const engines = { piper: "голос Piper", silero: "живой голос", azure: "голос Azure" };
+    // На телефоне говорит системный синтезатор, а имя вслух не слушается —
+    // микрофон включают кнопкой, жестом помощника или плиткой.
+    ui.chips.replaceChildren(
+      chip(brain, true),
+      isMobile
+        ? chip(voice.enabled ? "голос телефона" : "голос выключен", voice.enabled)
+        : chip(voice.enabled ? engines[voice.engine] ?? "голос" : "голос выключен", voice.enabled),
+      ...(isMobile
+        ? []
+        : [chip(voice.wakeWord ? `слушает «${voice.wakeName || "Ноа"}»` : "имя не слушает", voice.wakeWord)]),
+    );
+  } catch {
+    /* окно открыто вне приложения */
+  }
+}
+
+/* ── Виджет расхода ─────────────────────────────────────────────────────── */
+
+let widgetOnTop = false;
+api
+  ?.invoke("widget_settings")
+  .then((settings) => {
+    ui.widgetEnabled.checked = settings.enabled;
+    widgetOnTop = settings.onTop;
+  })
+  .catch(() => {});
+ui.widgetEnabled.addEventListener("change", () => {
+  api
+    ?.invoke("save_widget_settings", { settings: { enabled: ui.widgetEnabled.checked, onTop: widgetOnTop } })
+    .catch(() => {});
+});
+
+let startTab = null;
+try {
+  startTab = localStorage.getItem(TAB_KEY);
+} catch {
+  /* хранилище недоступно */
+}
+// Вкладка из адреса — с панели вкладок на телефоне: «Ноа», «Ещё».
+startTab = new URLSearchParams(location.search).get("tab") ?? startTab;
+showTab(["modules", "settings", "help"].includes(startTab) ? startTab : "modules");
+// На телефоне главный экран — разговор: его вкладка появляется после того,
+// как стало известно, что это телефон (applyPlatform).
+const phoneStart = () => showTab(["noa", "modules", "settings", "help"].includes(startTab) ? startTab : "noa");
+api?.invoke("settings_section").then(showSection).catch(() => {});
+api?.listen("onboarding:section", (event) => showSection(event.payload));
+
+api?.listen("voice:wake", (event) => {
+  ui.wakeWord.checked = Boolean(event.payload);
+});
+
+api?.listen("voice:install", (event) => {
+  const { percent, status, done, error } = event.payload ?? {};
+  if (error) {
+    ui.voiceStatus.textContent = String(error);
+    return;
+  }
+  ui.voiceStatus.textContent = done ? t("voice.ready") : `${status}… ${percent}%`;
+});
+
+/**
+ * Микрофон Bluetooth-наушников. Пока он открыт, Windows переводит наушники в
+ * режим гарнитуры: музыка становится тише и хуже и «гуляет», когда Ноа
+ * начинает и перестаёт слушать. Изменить это программа не может — только
+ * предупредить.
+ */
+function updateMicHint() {
+  if (!ui.micHint) return;
+  const name = ui.speechDevice.value || "";
+  ui.micHint.hidden = !/головной телефон|headset|hands-?free|airpods|buds/i.test(name);
+  ui.micHint.textContent =
+    "Это микрофон Bluetooth-наушников. Пока он открыт, Windows переводит наушники в режим " +
+    "гарнитуры: музыка становится тише и хуже, а громкость скачет. Поэтому с ним Ноа сама " +
+    "не слушает — ни имени, ни разговора после ответа, только по Alt+пробел. Чтобы звать по " +
+    "имени, выберите другой микрофон — встроенный, в веб-камере, USB.";
+}
+
+ui.speechDevice?.addEventListener("change", updateMicHint);
+
+async function loadSpeech() {
+  if (!api) return;
+
+  // Микрофоны: «основной» и «тот, в который говорят» совпадают не всегда.
+  try {
+    const devices = await api.invoke("input_devices");
+    const chosen = (await api.invoke("voice_settings")).inputDevice ?? "";
+    ui.speechDevice.replaceChildren();
+    const auto = document.createElement("option");
+    auto.value = "";
+    auto.textContent = t("speech.deviceAuto");
+    ui.speechDevice.append(auto);
+    for (const name of devices) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      ui.speechDevice.append(option);
+    }
+    ui.speechDevice.value = devices.includes(chosen) ? chosen : "";
+    const voice = await api.invoke("voice_settings");
+    ui.wakeWord.checked = Boolean(voice.wakeWord);
+    ui.wakeName.value = voice.wakeName ?? "";
+    ui.wakeName.placeholder = (await api.invoke("default_wake_name")) ?? "Ноа";
+    // Имя в шпаргалке на вкладке «Помощь» — то, на которое помощник отзывается.
+    if (ui.helpName) ui.helpName.textContent = ui.wakeName.value || ui.wakeName.placeholder;
+    updateMicHint();
+  } catch {
+    /* окно открыто вне приложения */
+  }
+
+  try {
+    const status = await api.invoke("speech_status");
+    if (status.ready) {
+      ui.speechDownload.hidden = true;
+      ui.speechStatus.textContent = t("speech.ready");
+      return;
+    }
+    ui.speechDownload.hidden = false;
+    // Размер называем сразу: два гигабайта — это решение, а не мелочь.
+    ui.speechDownload.textContent = `${t("speech.download")} (${status.sizeGb} ГБ)`;
+    ui.speechStatus.textContent = status.gpu ? t("speech.gpu") : t("speech.cpu");
+  } catch {
+    /* окно открыто вне приложения */
+  }
+}
+
+ui.speechDevice.addEventListener("change", saveVoice);
+ui.wakeWord.addEventListener("change", saveVoice);
+ui.wakeName.addEventListener("change", async () => {
+  await saveVoice();
+  if (ui.helpName) ui.helpName.textContent = ui.wakeName.value.trim() || ui.wakeName.placeholder;
+  loadChips();
+});
+
+ui.speechDownload.addEventListener("click", async () => {
+  if (!api) return;
+  ui.speechDownload.disabled = true;
+  try {
+    await api.invoke("speech_install");
+    await loadSpeech();
+  } catch (err) {
+    ui.speechStatus.textContent = String(err);
+  } finally {
+    ui.speechDownload.disabled = false;
+  }
+});
+
+api?.listen("speech:install", (event) => {
+  const { percent, status, done, error } = event.payload ?? {};
+  if (error) {
+    ui.speechStatus.textContent = String(error);
+    return;
+  }
+  ui.speechStatus.textContent = done ? t("speech.ready") : `${status}… ${percent}%`;
+});
+
+ui.launchAtLogin.addEventListener("change", async () => {
+  if (!api) return;
+  try {
+    await api.invoke("save_startup_settings", {
+      settings: { launchAtLogin: ui.launchAtLogin.checked },
+    });
+  } catch (err) {
+    // Возвращаем галочку как было: показывать включённой то, что включить не
+    // удалось, — врать пользователю о состоянии системы.
+    ui.launchAtLogin.checked = !ui.launchAtLogin.checked;
+    ui.aiStatus.textContent = `${t("startup.failed")} ${err}`;
+  }
+});
+
+ui.keyPage.addEventListener("click", async () => {
+  try {
+    await api?.invoke("open_key_page", { provider: ui.preset.value });
+  } catch (err) {
+    ui.aiStatus.textContent = String(err);
+  }
+});
+
+ui.logs.addEventListener("click", async () => {
+  try {
+    await api?.invoke("open_logs");
+  } catch (err) {
+    ui.capture.textContent = `Журнал не открылся: ${err}`;
+    ui.capture.dataset.state = "warn";
+  }
+});
+
+async function loadTrigger() {
+  if (!api) return;
+  try {
+    const settings = await api.invoke("trigger_settings");
+    ui.clipboardFallback.checked = settings.clipboardFallback;
+  } catch {
+    /* окно открыто вне приложения — настроек нет */
+  }
+
+  try {
+    const startup = await api.invoke("startup_settings");
+    ui.launchAtLogin.checked = startup.launchAtLogin;
+  } catch {
+    /* то же самое: без приложения показывать нечего */
+  }
+
+  await loadVoice();
+  await loadSpeech();
+}
+
+/* ── Настройка источника объяснений ─────────────────────────────────────── */
+
+// Готовые наборы: пользователь выбирает сервис, а не заполняет адреса руками.
+// Ошибиться в endpoint легко, а понять по «Сбой сети», что дело в опечатке, — нет.
+const PRESETS = {
+  wikipedia: { provider: "wikipedia", endpoint: "", model: "", key: false },
+  groq: {
+    provider: "http",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    model: "llama-3.3-70b-versatile",
+    key: true,
+    hintKey: "hint.groq",
+  },
+  google: {
+    provider: "http",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    // Имя-указатель на новейшую Flash-модель: конкретные версии Google
+    // закрывает, и пресет с ними через год отвечал 404.
+    model: "gemini-flash-latest",
+    key: true,
+    hintKey: "hint.google",
+  },
+  openrouter: {
+    provider: "http",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    // Бесплатные модели у OpenRouter приходят и уходят. Эта есть в списке на
+    // осень 2026; пропадёт — «Проверить» сама подберёт живую. Не Gemma: её
+    // OpenRouter часто отдаёт Google, а тот для Gemma не принимает системную
+    // инструкцию и отвечает 400.
+    model: "z-ai/glm-5.2:free",
+    key: true,
+    hintKey: "hint.openrouter",
+  },
+  ollama: {
+    provider: "http",
+    // Именно 127.0.0.1, а не localhost, и ровно та же строка, что стоит в
+    // умолчаниях приложения (ollama.rs, DEFAULT_ENDPOINT): по совпадению адреса
+    // окно узнаёт, какой источник выбран. На машинах с IPv6 localhost к тому же
+    // разрешается в ::1, где Ollama не слушает.
+    endpoint: "http://127.0.0.1:11434/api/chat",
+    // Пусто: модель подбирается под видеопамять этой машины (recommended_model).
+    model: "",
+    key: false,
+    hintKey: "hint.ollama",
+  },
+  custom: { provider: "http", endpoint: "", model: "", key: true },
+};
+
+/** По сохранённым настройкам понимаем, какой пресет показать. */
+function presetFor(settings) {
+  if (settings.provider !== "http") return settings.provider === "mock" ? "custom" : "wikipedia";
+  // Своя Ollama — по хосту, а не по строке целиком: в настройках прежних версий
+  // записан localhost, сейчас пишется 127.0.0.1, и это один и тот же сервер.
+  // Без этого у всех, кто обновился, источник показывался бы как «другой сервис».
+  if (/^https?:\/\/(localhost|127\.0\.0\.1):11434\b/.test(settings.endpoint || "")) return "ollama";
+  const found = Object.entries(PRESETS).find(([, p]) => p.endpoint && p.endpoint === settings.endpoint);
+  return found ? found[0] : "custom";
+}
+
+function applyPreset(name, { keepValues = false } = {}) {
+  const preset = PRESETS[name];
+  ui.modelFields.hidden = preset.provider !== "http";
+  // Адрес и прокси живут под спойлером, но прятать их надо по тому же признаку:
+  // у Википедии нет ни того, ни другого, и пустые поля там только сбивают с толку.
+  ui.advancedModel.hidden = preset.provider !== "http";
+  ui.keyField.hidden = !preset.key;
+  // Ссылку показываем только там, где ключ действительно где-то берут:
+  // у своего сервиса страницы ключей нет и быть не может.
+  ui.keyPage.hidden = !["groq", "google", "openrouter"].includes(name);
+  ui.keyHint.textContent = preset.hintKey ? t(preset.hintKey) : "";
+
+  // У Ollama модели лежат на этом же компьютере — их можно показать списком
+  // и доставить недостающую. У облачных сервисов список бесконечен и меняется
+  // без предупреждения, там честнее оставить поле для ввода.
+  const local = name === "ollama";
+  ui.modelsBlock.hidden = !local;
+  ui.modelField.hidden = local;
+  if (local) refreshModels();
+  if (!keepValues) {
+    ui.endpoint.value = preset.endpoint;
+    ui.model.value = preset.model;
+  }
+  // Для своей модели пустое поле заполняем не наугад, а тем, что подходит этой
+  // машине по видеопамяти. Тот же выбор программа делает сама при первом запуске.
+  if (local && !ui.model.value) suggestLocalModel();
+}
+
+/** Подставляет модель, подобранную под железо этой машины. */
+async function suggestLocalModel() {
+  if (!api) return;
+  try {
+    const model = await api.invoke("recommended_model");
+    // Пока ходили за ответом, человек мог выбрать модель сам или уйти на другой
+    // источник — перебивать его выбор нельзя.
+    if (model && !ui.model.value && ui.preset.value === "ollama") ui.model.value = model;
+  } catch {
+    /* не узнали — оставляем поле пустым, список моделей ниже всё равно есть */
+  }
+}
+
+async function loadSettings() {
+  if (!api) return;
+  try {
+    const settings = await api.invoke("ai_settings");
+    const name = presetFor(settings);
+    ui.preset.value = name;
+    applyPreset(name, { keepValues: true });
+    ui.endpoint.value = settings.endpoint || PRESETS[name].endpoint;
+    ui.model.value = settings.model || PRESETS[name].model;
+    ui.proxy.value = settings.proxy || "";
+    ui.apiKey.value = "";
+    ui.apiKey.placeholder = settings.apiKey ? t("key.saved") : t("key.placeholder");
+    loadFreeModels();
+    loadMine();
+  } catch (err) {
+    ui.aiStatus.textContent = `Не удалось прочитать настройки: ${err}`;
+  }
+}
+
+/* ── Мои модели ─────────────────────────────────────────────────────────── */
+
+const KIND = { подписка: "подписки на этом компьютере", мост: "мост на сервере", облако: "облако", своя: "своя модель на этом компьютере" };
+
+/** Подписки, которые умеет мост, — по-человечески. */
+const BRIDGE_NAMES = {
+  "claude-code-bridge": "Claude — подписка через мост",
+  "codex-bridge": "ChatGPT — подписка через Codex",
+  "gemini-bridge": "Gemini — аккаунт Google через мост",
+  "qwen-bridge": "Qwen — аккаунт qwen.ai через мост",
+  "qwen-cli": "Qwen — аккаунт qwen.ai (Qwen Code)",
+  "gemini-cli": "Gemini — аккаунт Google (Gemini CLI)",
+  "codex-cli": "ChatGPT — подписка (Codex)",
+  "claude-cli": "Claude — подписка (Claude Code)",
+};
+
+/** Имя модели для списка: без владельца, как её называют. */
+function shortModel(model) {
+  const bare = model.replace(/:free$/, "");
+  return BRIDGE_NAMES[bare] ?? model.split("/").pop();
+}
+
+/**
+ * Все модели, на которых Ноа уже работала, и те, что стоят в Ollama.
+ *
+ * Раньше переключиться можно было только выбрав источник и вписав имя модели
+ * руками: у моста и «другого сервиса» списка моделей нет, и имя приходилось
+ * помнить наизусть. Здесь — щелчок, ключ подставляется тот, что к этой модели.
+ */
+async function loadMine() {
+  if (!api) return;
+  let list = [];
+  try {
+    list = await api.invoke("brains_list");
+  } catch {
+    return;
+  }
+  ui.mineBlock.hidden = !list.length;
+  if (!list.length) return;
+  const current = list.find((item) => item.current);
+  const groups = new Map();
+  for (const item of list) {
+    if (!groups.has(item.kind)) groups.set(item.kind, []);
+    groups.get(item.kind).push(item);
+  }
+  const options = [];
+  if (!current) options.push(new Option("Выберите модель", ""));
+  for (const [kind, items] of groups) {
+    const group = document.createElement("optgroup");
+    group.label = KIND[kind] ?? kind;
+    for (const item of items) {
+      const option = new Option(shortModel(item.model), JSON.stringify([item.endpoint, item.model]));
+      option.title = `${item.model} — ${item.endpoint}`;
+      group.append(option);
+    }
+    options.push(group);
+  }
+  ui.mine.replaceChildren(...options);
+  ui.mine.value = current ? JSON.stringify([current.endpoint, current.model]) : "";
+}
+
+ui.mine?.addEventListener("change", async () => {
+  if (!ui.mine.value) return;
+  const [endpoint, model] = JSON.parse(ui.mine.value);
+  ui.mineStatus.textContent = "Переключаю…";
+  try {
+    ui.mineStatus.textContent = await api.invoke("brains_use", { endpoint, model });
+    await loadSettings();
+  } catch (err) {
+    ui.mineStatus.textContent = String(err);
+  }
+});
+
+ui.preset.addEventListener("change", () => {
+  applyPreset(ui.preset.value);
+  loadFreeModels();
+});
+
+async function saveAi() {
+  const preset = PRESETS[ui.preset.value];
+  await api.invoke("save_ai_settings", {
+    settings: {
+      provider: preset.provider,
+      endpoint: ui.endpoint.value.trim(),
+      apiKey: ui.apiKey.value.trim(),
+      // Пустое имя модели облачный сервис не примет — берём из пресета.
+      model: ui.model.value.trim() || preset.model,
+      proxy: ui.proxy.value.trim(),
+    },
+  });
+  ui.apiKey.value = "";
+  loadMine();
+}
+
+/* ── Каталог моделей облачного сервиса ──────────────────────────────────── */
+
+/** Весь каталог сервиса, каким он пришёл: по нему ищет поле поиска. */
+let catalog = [];
+
+/** Цена модели словами: «бесплатно» или «$3 / $15 за млн токенов». */
+function priceOf(model) {
+  if (model.free === true) return "бесплатно";
+  const has = (value) => value !== null && value !== undefined;
+  if (!has(model.promptPrice) && !has(model.completionPrice)) return "";
+  const money = (value) => (has(value) ? `$${value < 1 ? value.toFixed(2) : value.toFixed(value < 10 ? 1 : 0)}` : "—");
+  return `${money(model.promptPrice)} / ${money(model.completionPrice)} за млн`;
+}
+
+/** Строка модели в списке: имя, цена и длина контекста. */
+function modelLabel(model) {
+  const parts = [model.name === model.id ? model.id : `${model.name} — ${model.id}`];
+  const price = priceOf(model);
+  if (price) parts.push(price);
+  if (model.context) parts.push(`${Math.round(model.context / 1000)}k`);
+  return parts.join(" · ");
+}
+
+/**
+ * Показывает каталог с учётом поиска.
+ *
+ * Бесплатные идут первыми: их выбирают чаще, а искать их среди четырёх сотен
+ * платных — работа, которой человек не просил.
+ */
+function drawModels() {
+  const asked = (ui.modelSearch?.value ?? "").trim().toLowerCase();
+  const wantsFree = ["бесплат", "free", "даром"].some((word) => asked.includes(word));
+  const found = catalog.filter((model) => {
+    if (wantsFree) return model.free === true;
+    if (!asked) return true;
+    return `${model.id} ${model.name}`.toLowerCase().includes(asked);
+  });
+  const sorted = [...found].sort((one, other) => Number(other.free === true) - Number(one.free === true));
+  const current = ui.model.value.trim();
+
+  ui.freeModels.replaceChildren(
+    new Option(sorted.length ? `Моделей: ${sorted.length}` : "Ничего не нашлось", ""),
+    ...sorted.slice(0, 300).map((model) => new Option(modelLabel(model), model.id)),
+  );
+  ui.freeModels.value = sorted.some((model) => model.id === current) ? current : "";
+}
+
+/**
+ * Заполняет список моделями выбранного сервиса — свежими, от него самого.
+ *
+ * Показываются все, а не одни бесплатные: за платной моделью человек уходил на
+ * сайт сервиса и выписывал имя руками — и однажды выписал `jev-1.13`, которая
+ * вообще не отвечает в чате. Цена рядом с именем для того же: выбор между
+ * моделями — это выбор между ценами.
+ */
+async function loadFreeModels() {
+  ui.freeWrap.hidden = true;
+  ui.catalogStatus.textContent = "";
+  const asked = ui.preset.value;
+  const endpoint = ui.endpoint.value.trim();
+  if (!api || asked === "ollama" || PRESETS[asked].provider !== "http" || !endpoint) return;
+
+  let models;
+  try {
+    models = await api.invoke("cloud_models", {
+      endpoint,
+      apiKey: ui.apiKey.value.trim(),
+      proxy: ui.proxy.value.trim(),
+    });
+  } catch (err) {
+    ui.catalogStatus.textContent = `Список моделей не пришёл: ${err}`;
+    return;
+  }
+  // Пока ждали ответа, человек мог уйти на другой источник.
+  if (ui.preset.value !== asked) return;
+
+  catalog = models;
+  if (!catalog.length) return;
+  drawModels();
+  ui.freeWrap.hidden = false;
+}
+
+ui.modelSearch?.addEventListener("input", drawModels);
+
+// Выбор в списке сразу сохраняется: отдельное «Сохранить» здесь лишний шаг.
+ui.freeModels.addEventListener("change", async () => {
+  const id = ui.freeModels.value;
+  if (!id) return;
+  ui.model.value = id;
+  try {
+    await saveAi();
+    ui.catalogStatus.textContent = `Теперь отвечает «${id}». «Проверить» — пробный вопрос.`;
+  } catch (err) {
+    ui.catalogStatus.textContent = `Не сохранилось: ${err}`;
+  }
+});
+ui.apiKey.addEventListener("change", loadFreeModels);
+
+ui.save.addEventListener("click", async () => {
+  ui.aiStatus.textContent = t("action.saving");
+  try {
+    await saveAi();
+    ui.aiStatus.textContent = t("action.saved");
+  } catch (err) {
+    ui.aiStatus.textContent = `Не удалось сохранить: ${err}`;
+  }
+});
+
+/* ── Модели на этом устройстве ──────────────────────────────────────────── */
+
+// Что предлагаем поставить. Список короткий намеренно: каждая модель здесь
+// проверена на настоящих терминах, а не взята из чужого рейтинга. Первая
+// отвечает точнее и знает научные слова, вторая легче и шустрее, но на редких
+// терминах ошибается. Всё, что уже установлено, показывается и без этого списка.
+// Размеры взяты из реестра Ollama (registry.ollama.ai), а не по памяти:
+// у каждой строки это настоящий объём загрузки.
+//
+// Первые три проверены на живых терминах, и подпись у них про качество.
+// Остальные я не проверял — и подпись у них поэтому только о том, что можно
+// утверждать наверняка: чьё семейство и насколько крупная. Придумывать им
+// достоинства значило бы выдать догадку за рекомендацию.
+const CATALOG = [
+  { name: "qwen3.5:4b", size: "3.4 ГБ", note: "точная и быстрая, оставляет место распознаванию речи", top: true },
+  { name: "qwen3.5:9b", size: "6.6 ГБ", note: "точнее всех; вместе с голосом нужна карта от 12 ГБ", top: true },
+  { name: "gemma3:1b", size: "0.8 ГБ", note: "для слабых машин, чаще ошибается", top: true },
+  { name: "qwen2.5:7b", size: "4.7 ГБ", note: "прежнее поколение: быстрая, но путается в фактах" },
+  { name: "gemma3:4b", size: "3.3 ГБ", note: "Gemma от Google, компактная" },
+  { name: "qwen2.5:3b", size: "1.9 ГБ", note: "прежнее поколение Qwen, маленькая" },
+  { name: "llama3.2:3b", size: "2.0 ГБ", note: "Llama от Meta, компактная" },
+  { name: "phi4-mini", size: "2.5 ГБ", note: "Phi от Microsoft, компактная" },
+  { name: "gemma3:12b", size: "8.1 ГБ", note: "крупная, нужна мощная машина" },
+];
+
+/**
+ * Развёрнут ли полный каталог.
+ *
+ * По умолчанию видно три строки. Девять незнакомых имён на первом экране —
+ * это не выбор, а работа по сравнению того, о чём человек ничего не знает.
+ */
+let showAllModels = false;
+
+/** Показывать ли пояснения к моделям. По умолчанию нет — см. разметку. */
+let showModelNotes = false;
+
+/** Идущие сейчас загрузки: имя модели → строка состояния для показа. */
+const pulling = new Map();
+
+/**
+ * Последний известный список установленного.
+ *
+ * Прогресс загрузки приходит десятки раз в минуту, и спрашивать у Ollama состав
+ * моделей на каждый процент — бессмысленная работа: за время загрузки он не
+ * меняется. Перерисовываем по запомненному.
+ */
+let lastInstalled = [];
+
+/** Отвечала ли Ollama при последнем опросе. */
+let lastRunning = false;
+
+/**
+ * Последняя неудача при работе с моделями — держится до следующего действия.
+ * Отдельно от подсказки: подсказку перерисовка переписывает каждый раз.
+ */
+let modelsProblem = "";
+
+function makeRow({ name, note, size, installed, chosen }) {
+  const row = document.createElement("div");
+  row.className = "ob__model";
+  if (chosen) row.dataset.chosen = "true";
+  // Нескачанная строка приглушена: по одному взгляду на список должно быть
+  // видно, что у тебя есть, а что придётся ждать.
+  if (!installed) row.dataset.absent = "true";
+
+  // Имя и размер слева одной группой, состояние — справа. Размер показываем
+  // всегда, а не только у нескачанных: у скачанной он отвечает на вопрос
+  // «сколько это занимает у меня на диске». Это часть решения, не справка.
+  const main = document.createElement("span");
+  main.className = "ob__model-main";
+
+  const title = document.createElement("span");
+  title.className = "ob__model-name";
+  title.textContent = name;
+
+  const sizeEl = document.createElement("span");
+  sizeEl.className = "ob__model-size";
+  sizeEl.textContent = size;
+
+  main.append(title, sizeEl);
+  row.append(main);
+
+  // Наведение показывает пояснение и без раскрытия списка: тому, кто просто
+  // хочет узнать про одну строку, незачем разворачивать все девять.
+  if (note) row.title = note;
+
+  const state = document.createElement("span");
+  state.className = "ob__model-state";
+
+  if (pulling.has(name)) {
+    state.textContent = pulling.get(name);
+    row.append(state);
+  } else if (installed) {
+    // Выбор — щелчок по строке целиком, а не по крошечной галочке: строк мало,
+    // промахнуться не по чему.
+    row.tabIndex = 0;
+    row.dataset.pick = name;
+    // Состояние словами: строка без кнопки выглядела так же, как строка с
+    // кнопкой, и понять, что уже лежит на диске, было нельзя.
+    state.textContent = chosen ? t("model.chosen") : t("model.downloaded");
+    row.append(state);
+    // Невыбранную скачанную модель можно удалить: они весят гигабайты, а
+    // пользуются обычно одной.
+    if (!chosen) {
+      const drop = document.createElement("button");
+      drop.type = "button";
+      drop.className = "ob__link ob__model-delete";
+      drop.textContent = "удалить";
+      drop.title = `Удалить ${name} с диска`;
+      drop.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        const ok = confirm(
+          `Удалить модель ${name} с диска? Освободится ${size}. Понадобится снова — скачаете заново.`,
+        );
+        if (!ok) return;
+        drop.disabled = true;
+        drop.textContent = "удаляю…";
+        try {
+          await api?.invoke("delete_model", { model: name });
+          modelsProblem = "";
+        } catch (err) {
+          modelsProblem = String(err);
+        }
+        refreshModels();
+      });
+      row.append(drop);
+    }
+  } else {
+    state.textContent = t("model.absent");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ob__btn ob__btn--quiet";
+    button.dataset.pull = name;
+    button.textContent = t("model.download");
+    row.append(state, button);
+  }
+
+  // Пояснение — отдельной строкой под именем, поэтому список переносит его
+  // на второй ряд только когда пояснения включены (см. CSS).
+  if (note) {
+    const hint = document.createElement("span");
+    hint.className = "ob__model-note";
+    hint.textContent = note;
+    row.append(hint);
+  }
+
+  return row;
+}
+
+function renderModels(status) {
+  ui.modelsList.replaceChildren();
+  ui.modelsList.dataset.notes = showModelNotes ? "on" : "off";
+  ui.modelsInfo.textContent = showModelNotes ? t("model.compareHide") : t("model.compare");
+  lastInstalled = status?.installed ?? lastInstalled;
+  lastRunning = status?.running ?? false;
+
+  if (!status?.running) {
+    // На телефоне Ollama не бывает вовсе — это программа для компьютера.
+    // Советовать «установите её» бессмысленно, а кнопка запуска не запустит
+    // ничего. Зато телефон может спрашивать компьютер в той же сети — это
+    // единственный рабочий путь, о нём и говорим.
+    if (isMobile) {
+      ui.ollamaStart.hidden = true;
+      ui.modelsHint.textContent = t("models.ollamaMobile");
+      return;
+    }
+
+    // Установлена, но молчит — обычное дело после перезагрузки: Ollama не
+    // всегда прописывается в автозапуск. Советовать «установите с ollama.com»
+    // тому, у кого она уже стоит, — значит переложить вину на человека и не
+    // сказать, что делать. Предлагаем запустить прямо отсюда.
+    // Установлена, но молчит — предлагаем запустить. Не найдена вовсе —
+    // предлагаем поставить: ходить за ней на сайт вручную человек не обязан.
+    ui.ollamaStart.hidden = !status?.present;
+    ui.ollamaInstall.hidden = Boolean(status?.present);
+    if (!status?.present) labelInstallButton();
+    ui.modelsHint.textContent = status?.present
+      ? t("models.ollamaStopped")
+      : t("models.ollamaMissing");
+    return;
+  }
+
+  ui.ollamaStart.hidden = true;
+  ui.ollamaInstall.hidden = true;
+
+  const installed = new Map(status.installed.map((m) => [m.name, m]));
+  const chosen = ui.model.value.trim();
+  const shown = new Set();
+
+  for (const item of showAllModels ? CATALOG : CATALOG.filter((m) => m.top)) {
+    shown.add(item.name);
+    const found = installed.get(item.name);
+    ui.modelsList.append(
+      makeRow({
+        name: item.name,
+        note: item.note,
+        // У скачанной берём настоящий размер с диска, у остальной — обещанный
+        // из списка: до загрузки точного размера никто не знает.
+        size: found ? `${found.sizeGb} ГБ` : item.size,
+        installed: Boolean(found),
+        chosen: Boolean(found) && chosen === item.name,
+      }),
+    );
+  }
+
+  // Всё остальное, что человек скачал сам, — тоже его выбор, прятать нельзя.
+  for (const model of status.installed) {
+    if (shown.has(model.name)) continue;
+    shown.add(model.name);
+    ui.modelsList.append(
+      makeRow({
+        name: model.name,
+        note: "",
+        size: `${model.sizeGb} ГБ`,
+        installed: true,
+        chosen: chosen === model.name,
+      }),
+    );
+  }
+
+  // Модель, которую качают прямо сейчас, может не быть ни в списке, ни среди
+  // установленных — так бывает с любой, вписанной руками. Без этой строки
+  // загрузка шла бы вслепую: кнопку нажали, а на экране ничего не изменилось.
+  for (const name of pulling.keys()) {
+    if (shown.has(name)) continue;
+    ui.modelsList.append(makeRow({ name, note: "", size: "", installed: false, chosen: false }));
+  }
+
+  ui.modelsToggle.textContent = showAllModels ? t("model.showLess") : t("model.showMore");
+  ui.modelAdd.hidden = !showAllModels;
+
+  // Сообщение о неудаче переживает перерисовку и держится, пока человек не
+  // начнёт новое действие. Раньше его писали прямо в подсказку, а следующая
+  // же строка этой функции затирала текст дежурным пояснением — сообщение
+  // жило миллисекунды, и со стороны нажатие «Скачать» выглядело так, будто
+  // кнопка ничего не делает. Именно так и терялась ошибка «Ollama не отвечает».
+  if (modelsProblem) {
+    ui.modelsHint.textContent = modelsProblem;
+  } else if (pulling.size) {
+    ui.modelsHint.textContent = t("models.hintPulling");
+  } else if (installed.size === 0) {
+    ui.modelsHint.textContent = t("models.hintEmpty");
+  } else {
+    ui.modelsHint.textContent = t("models.hint");
+  }
+}
+
+async function refreshModels() {
+  if (!api) return;
+  try {
+    renderModels(await api.invoke("local_models"));
+  } catch {
+    renderModels(null);
+  }
+}
+
+/**
+ * Качает модель по имени — из списка или вписанную руками, разницы нет.
+ *
+ * Строку состояния ставим до запроса, а не по первому событию: между нажатием
+ * и первым ответом Ollama проходит секунда-другая, и всё это время окно
+ * выглядело бы так, будто кнопку не нажали.
+ */
+async function startPull(name) {
+  if (!name || pulling.has(name)) return;
+  modelsProblem = "";
+  pulling.set(name, t("model.preparing"));
+  redraw();
+
+  try {
+    await api.invoke("pull_model", { model: name });
+  } catch (err) {
+    // Сюда попадает и опечатка в имени, и молчащая Ollama: сообщение держится
+    // до следующего действия, а не гаснет на ближайшей перерисовке.
+    modelsProblem = `Не удалось скачать «${name}»: ${err}`;
+    pulling.delete(name);
+    // Заодно уточняем, жива ли Ollama вообще: если нет — покажется кнопка
+    // «Запустить», а не одно лишь сообщение о неудаче.
+    await refreshModels();
+    return;
+  }
+
+  pulling.delete(name);
+  await refreshModels();
+}
+
+/**
+ * Перерисовка по запомненному состоянию — без похода в Rust.
+ *
+ * Раньше в таких местах писалось `{ running: true }`, то есть окно уверяло
+ * само себя, что Ollama отвечает, даже когда она молчала.
+ */
+function redraw() {
+  renderModels({ running: lastRunning, present: true, installed: lastInstalled });
+}
+
+ui.modelsToggle.addEventListener("click", () => {
+  showAllModels = !showAllModels;
+  redraw();
+});
+
+ui.modelsInfo.addEventListener("click", () => {
+  showModelNotes = !showModelNotes;
+  redraw();
+});
+
+/**
+ * Размер установщика Ollama — пишем прямо на кнопке.
+ *
+ * Полтора гигабайта человек должен видеть до нажатия, а не узнавать из
+ * ползущей полосы. Спрашиваем у GitHub один раз, при первом показе кнопки;
+ * не ответил — кнопка остаётся без размера, но работает.
+ */
+let installSize = null;
+
+async function labelInstallButton() {
+  if (installSize === null && api) {
+    try {
+      installSize = await api.invoke("ollama_install_size");
+    } catch {
+      installSize = 0;
+    }
+  }
+  ui.ollamaInstall.textContent = installSize
+    ? `${t("models.ollamaInstall")} · ${installSize} ГБ`
+    : t("models.ollamaInstall");
+}
+
+ui.ollamaInstall.addEventListener("click", async () => {
+  modelsProblem = "";
+  ui.ollamaInstall.disabled = true;
+  try {
+    await api.invoke("install_ollama");
+    modelsProblem = t("models.ollamaInstalled");
+  } catch (err) {
+    modelsProblem = `${t("models.ollamaInstallFailed")} ${err}`;
+  }
+  ui.ollamaInstall.disabled = false;
+  await refreshModels();
+});
+
+// Ход установки: те же события, что у загрузки моделей, но своим каналом —
+// путать «качается модель» и «ставится сама Ollama» нельзя.
+api?.listen("ollama:install", (event) => {
+  const { percent, status, done } = event.payload ?? {};
+  if (done) return;
+  ui.ollamaInstall.textContent =
+    percent > 0 ? `${t("models.ollamaInstalling")} · ${status} ${percent}%` : `${t("models.ollamaInstalling")} · ${status}`;
+});
+
+ui.ollamaStart.addEventListener("click", async () => {
+  modelsProblem = "";
+  ui.ollamaStart.disabled = true;
+  ui.modelsHint.textContent = t("models.ollamaStarting");
+  try {
+    await api.invoke("start_ollama");
+  } catch (err) {
+    modelsProblem = `Не удалось запустить: ${err}`;
+    ui.ollamaStart.disabled = false;
+    await refreshModels();
+    return;
+  }
+
+  // Сервер поднимается несколько секунд. Спрашиваем раз в секунду, пока не
+  // ответит: молчаливое ожидание неотличимо от «кнопка не сработала».
+  for (let attempt = 0; attempt < 15; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await refreshModels();
+    if (lastRunning) break;
+  }
+
+  ui.ollamaStart.disabled = false;
+  if (!lastRunning) {
+    modelsProblem = t("models.ollamaSlow");
+    redraw();
+  }
+});
+
+ui.modelPull.addEventListener("click", () => {
+  const name = ui.modelCustom.value.trim();
+  if (!name) return;
+  ui.modelCustom.value = "";
+  startPull(name);
+});
+
+// Enter в поле — то же самое, что нажать кнопку: вписал имя, нажал ввод.
+ui.modelCustom.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  ui.modelPull.click();
+});
+
+ui.modelsList.addEventListener("click", async (event) => {
+  const pull = event.target.closest("[data-pull]");
+  if (pull) {
+    startPull(pull.dataset.pull);
+    return;
+  }
+
+  const pick = event.target.closest("[data-pick]");
+  if (!pick) return;
+  ui.model.value = pick.dataset.pick;
+  try {
+    await saveAi();
+    ui.aiStatus.textContent = `Модель ${pick.dataset.pick} выбрана. Нажмите «Проверить».`;
+  } catch (err) {
+    ui.aiStatus.textContent = `Не удалось сохранить: ${err}`;
+  }
+  await refreshModels();
+});
+
+// Ход загрузки идёт событиями из Rust: сотни строк в секунду там сведены
+// к шагу в один процент, здесь остаётся только показать.
+api?.listen("model:pull", (event) => {
+  const { model, percent, status, done, error } = event.payload ?? {};
+  if (!model) return;
+  if (error) {
+    pulling.delete(model);
+    ui.modelsHint.textContent = `Не удалось скачать ${model}: ${error}`;
+    refreshModels();
+    return;
+  }
+  if (done) {
+    pulling.delete(model);
+    refreshModels();
+    return;
+  }
+  pulling.set(model, percent > 0 ? `${status} ${percent}%` : `${status}…`);
+  renderModels({ running: true, installed: lastInstalled });
+});
+
+ui.test.addEventListener("click", async () => {
+  ui.aiStatus.textContent = t("action.testing");
+  try {
+    // Пробуем настоящий запрос на слове «альбедо»: увидеть ответ надёжнее,
+    // чем увидеть «ключ принят».
+    const answer = await api.invoke("test_ai");
+    ui.aiStatus.textContent = `${t("action.works")} ${answer}`;
+  } catch (err) {
+    ui.aiStatus.textContent = `Не получилось: ${err}`;
+  } finally {
+    // Проверка сама меняет модель, которой у сервиса больше нет, — в поле
+    // должно быть то имя, которым программа теперь пользуется.
+    const fresh = await api?.invoke("ai_settings").catch(() => null);
+    if (fresh?.model) ui.model.value = fresh.model;
+  }
+});
+
+ui.recheck.addEventListener("click", refresh);
+ui.recheckHere.addEventListener("click", refresh);
+ui.settings.addEventListener("click", async () => {
+  const opened = await api?.invoke("open_permission_settings");
+  if (!opened) {
+    ui.hint.textContent =
+      "Не удалось открыть настройки автоматически — откройте их вручную по инструкции выше.";
+  }
+});
+
+// Платформа — первой: от неё зависят подписи и то, какие разделы вообще имеют
+// смысл. loadSettings идёт следом, потому что список моделей опирается на неё.
+// Вид — первым: от языка зависят все подписи, а от темы первый кадр окна.
+// Платформа следом: она правит текст низа и прячет разделы, которых на
+// телефоне нет. Остальное — уже поверх готового языка.
+loadView().then(() => applyPlatform()).then(() => {
+  if (isMobile) phoneStart();
+  loadChips();
+  // Доступ к выделению на телефоне проверять не у кого: «Объяснить» в меню
+  // выделения система даёт сама.
+  if (isMobile) render({ title: "", hint: "", canOpenSettings: false, ready: true });
+  else refresh();
+  loadSettings();
+  loadTrigger();
+  refreshCapture();
+  // После applyPlatform: раздел обновления знает, что на телефоне его не место.
+  loadUpdate();
+});
+
+/* ── Площадка модулей ────────────────────────────────────────────────────── */
+
+async function loadPlatform() {
+  if (!api || !ui.platformUrl) return;
+  try {
+    const settings = await api.invoke("platform_settings");
+    ui.platformUrl.value = settings.url;
+    ui.platformToken.value = "";
+    ui.platformToken.placeholder = settings.hasToken ? "ключ сохранён — вставьте новый, чтобы заменить" : "noah_…";
+  } catch {
+    /* окно открыто вне приложения */
+  }
+}
+
+ui.platformSave?.addEventListener("click", async () => {
+  if (!api) return;
+  ui.platformSave.disabled = true;
+  ui.platformStatus.textContent = "Проверяю…";
+  try {
+    ui.platformStatus.textContent = await api.invoke("save_platform_settings", {
+      settings: { url: ui.platformUrl.value, token: ui.platformToken.value, hasToken: false },
+    });
+    await loadPlatform();
+  } catch (err) {
+    ui.platformStatus.textContent = String(err);
+  } finally {
+    ui.platformSave.disabled = false;
+  }
+});
+
+ui.platformOpen?.addEventListener("click", () => {
+  api?.invoke("open_platform").catch((err) => (ui.platformStatus.textContent = String(err)));
+});
+
+loadPlatform();
+
+/* ── Обновление ──────────────────────────────────────────────────────────── */
+
+/**
+ * Что написано в разделе: какая версия стоит и есть ли что поставить.
+ *
+ * Кнопка «Обновить» показывается только когда обновление найдено: предлагать
+ * её всем остальным — обещать действие, которое ничего не изменит.
+ *
+ * На компьютере обновление ставится само, в тихую минуту (src-tauri/src/update.rs);
+ * кнопка — чтобы не ждать.
+ */
+function showUpdate(found, version) {
+  if (!ui.updateStatus) return;
+  ui.updateStatus.textContent = found
+    ? isMobile
+      ? `Стоит ${version}, вышла ${found.version}. Скачайте новый .apk и откройте его — Android поставит его поверх, настройки и модули останутся на месте.`
+      : `Стоит ${version}, вышла ${found.version}. Программа скачает и поставит её сама, когда вы отойдёте от компьютера, и перезапустится — настройки и модули останутся на месте. Не ждать — кнопка ниже.`
+    : `Стоит ${version} — это последняя версия.`;
+  if (ui.updateInstall) ui.updateInstall.hidden = !found;
+}
+
+async function loadUpdate() {
+  if (!api || !ui.updateBlock) return;
+  try {
+    const version = await api.invoke("app_version");
+    ui.updateStatus.textContent = `Стоит ${version}.`;
+    showUpdate(await api.invoke("update_check"), version);
+  } catch (err) {
+    ui.updateStatus.textContent = `Не удалось проверить обновление: ${err}`;
+  }
+}
+
+ui.updateCheck?.addEventListener("click", async () => {
+  ui.updateCheck.disabled = true;
+  ui.updateStatus.textContent = "Смотрю, что вышло…";
+  await loadUpdate();
+  ui.updateCheck.disabled = false;
+});
+
+ui.updateInstall?.addEventListener("click", async () => {
+  ui.updateInstall.disabled = true;
+  ui.updateCheck.disabled = true;
+  // Загрузка идёт минуту-другую, и всё это время окно должно объяснять, чего
+  // ждать: молчащая кнопка выглядит сломанной.
+  ui.updateStatus.textContent = isMobile
+    ? "Открываю загрузку — когда .apk скачается, откройте его из уведомления."
+    : "Загружаю и ставлю — программа перезапустится сама.";
+  try {
+    await api.invoke("update_install");
+    if (isMobile) {
+      ui.updateInstall.disabled = false;
+      ui.updateCheck.disabled = false;
+    }
+  } catch (err) {
+    ui.updateStatus.textContent = `Не удалось обновить: ${err}`;
+    ui.updateInstall.disabled = false;
+    ui.updateCheck.disabled = false;
+  }
+});
+
+// Окно открыто в браузере для разработки (npm run dev): тема, вкладка и
+// раздел «Помощи» — из адреса, ?theme=noah&tab=settings&sub=keys.
+if (!api) {
+  const query = new URLSearchParams(location.search);
+  if (query.get("theme")) {
+    view = { ...view, theme: query.get("theme") };
+    applyTheme(view.theme);
+    renderViewMenu();
+  }
+  if (query.get("tab")) showTab(query.get("tab"));
+  if (query.get("sub")) showSub(query.get("sub"));
+}

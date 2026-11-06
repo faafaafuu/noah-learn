@@ -1,0 +1,117 @@
+[
+ {
+  "slug": "about",
+  "group": "Начало",
+  "title": "Что такое Qrack"
+ },
+ {
+  "slug": "first-course",
+  "group": "Начало",
+  "title": "Первый курс"
+ },
+ {
+  "slug": "lesson",
+  "group": "Учёба",
+  "title": "Урок с Ноа"
+ },
+ {
+  "slug": "suflyor",
+  "group": "Учёба",
+  "title": "Суфлёр и разговоры"
+ },
+ {
+  "slug": "features",
+  "group": "Учёба",
+  "title": "Что использовать"
+ },
+ {
+  "slug": "media",
+  "group": "Учёба",
+  "title": "Ролики, аудиодрамы, путеводители"
+ },
+ {
+  "slug": "sheet",
+  "group": "Учёба",
+  "title": "Конспект, карта, фокус"
+ },
+ {
+  "slug": "drill",
+  "group": "Учёба",
+  "title": "Наизусть"
+ },
+ {
+  "slug": "review",
+  "group": "Учёба",
+  "title": "Повторение по интервалам"
+ },
+ {
+  "slug": "exam",
+  "group": "Учёба",
+  "title": "Экзамен и собеседование"
+ },
+ {
+  "slug": "practice",
+  "group": "Учёба",
+  "title": "Практика в терминале"
+ },
+ {
+  "slug": "goals",
+  "group": "Учёба",
+  "title": "Цели"
+ },
+ {
+  "slug": "models",
+  "group": "Настройки",
+  "title": "Модель и ключи"
+ },
+ {
+  "slug": "voice",
+  "group": "Настройки",
+  "title": "Голос"
+ },
+ {
+  "slug": "account",
+  "group": "Настройки",
+  "title": "Аккаунт и синхронизация"
+ },
+ {
+  "slug": "themes",
+  "group": "Настройки",
+  "title": "Темы оформления"
+ },
+ {
+  "slug": "architecture",
+  "group": "Как устроено",
+  "title": "Устройство"
+ },
+ {
+  "slug": "format",
+  "group": "Как устроено",
+  "title": "Стандарт курса"
+ },
+ {
+  "slug": "builder",
+  "group": "Как устроено",
+  "title": "Сборка курса"
+ },
+ {
+  "slug": "mcp",
+  "group": "Как устроено",
+  "title": "MCP: курсы из твоей нейросети"
+ },
+ {
+  "slug": "desktop",
+  "group": "Как устроено",
+  "title": "Программа для Windows"
+ },
+ {
+  "slug": "privacy",
+  "group": "Как устроено",
+  "title": "Данные и приватность"
+ },
+ {
+  "slug": "code",
+  "group": "Как устроено",
+  "title": "Где код"
+ }
+]

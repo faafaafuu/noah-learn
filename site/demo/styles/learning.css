@@ -1,0 +1,2123 @@
+/* Окно обучения. Язык тот же, что у окон задач, заказа и активов: тёплый фон,
+   антиква в заголовках, один акцентный цвет. Своих цветов два — «верно» и
+   «неверно»: без них проверку ответов не прочесть с одного взгляда. */
+
+:root {
+  --good: #2f9e5f;
+  --bad: var(--error);
+}
+
+/* Спрятанное прячется всегда, какой бы display ни задал класс. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-solid);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--size-ui);
+  line-height: var(--line-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+}
+
+/* ── Заголовок ─────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px 12px 22px;
+  border-bottom: 1px solid var(--divider);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.head:active {
+  cursor: grabbing;
+}
+
+/* Слева — скромно: «NOAH 1.14.3», а не крупное «Обучение» прописными. */
+.head__title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.head__course {
+  color: var(--text-muted);
+}
+
+.head__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.head__percent {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.head__button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.head__button:hover {
+  color: var(--text);
+  background: var(--btn-hover-bg);
+}
+
+.bar {
+  display: inline-block;
+  width: 140px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--divider);
+  overflow: hidden;
+}
+.bar__fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.bar--small {
+  width: 100%;
+  height: 4px;
+}
+
+/* ── Раскладка ─────────────────────────────────────────────────────────── */
+
+.layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 250px 1fr;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--divider);
+  padding: 10px 8px;
+  gap: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.topics {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+.side__lobby,
+.side__home,
+.side__final,
+.topic {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.side__lobby:hover,
+.side__home:hover,
+.side__final:hover,
+.topic:hover {
+  background: var(--btn-hover-bg);
+}
+.side__lobby[aria-current="true"],
+.side__home[aria-current="true"],
+.side__final[aria-current="true"],
+.topic[aria-current="true"] {
+  border-color: var(--accent);
+}
+/* «Все курсы» — над обзором текущего курса: выход в лобби. */
+.side__lobby {
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: var(--size-secondary);
+}
+
+.side__final {
+  margin-top: 6px;
+  border-color: var(--btn-border);
+  color: var(--accent);
+}
+.side__final[data-locked="true"] {
+  color: var(--text-muted);
+}
+
+.topic__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topic__mark {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.topic__mark--done {
+  color: var(--good);
+}
+.topic__mark--practice,
+.topic__mark--reading {
+  color: var(--accent);
+}
+.topic__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.topic__score {
+  font-size: var(--size-label);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.topic .bar {
+  margin-top: 6px;
+}
+
+.main {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 30px 40px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* ── Содержимое ────────────────────────────────────────────────────────── */
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.page__title {
+  margin: 0 0 4px;
+  font-family: var(--font-term);
+  font-size: 28px;
+  font-weight: var(--term-weight);
+  color: var(--text);
+}
+
+.page__lead {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+}
+
+.steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 20px;
+}
+.step {
+  padding: 5px 14px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.step:hover {
+  color: var(--text);
+}
+.step[aria-selected="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.step__badge {
+  margin-left: 6px;
+  font-size: var(--size-label);
+}
+
+/* Урок — Markdown. */
+.lesson {
+  color: var(--text-body);
+  line-height: 1.6;
+}
+.lesson h1 {
+  display: none; /* заголовок урока уже есть над ним */
+}
+.lesson h2 {
+  margin: 26px 0 8px;
+  font-family: var(--font-term);
+  font-size: 21px;
+  font-weight: var(--term-weight);
+  color: var(--accent);
+}
+.lesson h3 {
+  margin: 18px 0 6px;
+  font-size: 16px;
+}
+.lesson p {
+  margin: 0 0 12px;
+}
+.lesson ul,
+.lesson ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+.lesson li {
+  margin: 3px 0;
+}
+.lesson code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--btn-hover-bg);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.92em;
+}
+.lesson pre {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--btn-hover-bg);
+  overflow-x: auto;
+}
+.lesson pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.button {
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.button:hover {
+  background: var(--btn-hover-bg);
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.button--quiet {
+  border-color: var(--btn-border);
+  color: var(--text-muted);
+}
+
+/* Вопрос: задача или экзамен. */
+.question {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+}
+.question__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.question__number {
+  font-size: var(--size-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.question__score {
+  margin-left: auto;
+  font-size: var(--size-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.question__text {
+  margin: 0 0 12px;
+  white-space: pre-line;
+}
+
+.answer {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 90px;
+  padding: 10px 12px;
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+.answer:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.answer-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.dictate {
+  padding: 5px 12px;
+  font-size: var(--size-secondary);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.option:hover {
+  background: var(--btn-hover-bg);
+}
+.option input {
+  margin-top: 3px;
+}
+.option--right {
+  border-color: var(--good);
+}
+.option--wrong {
+  border-color: var(--bad);
+}
+
+.verdict {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--text-muted);
+  border-radius: 0 8px 8px 0;
+  background: var(--btn-hover-bg);
+}
+.verdict--right {
+  border-left-color: var(--good);
+}
+.verdict--wrong {
+  border-left-color: var(--bad);
+}
+.verdict__line {
+  margin: 0 0 6px;
+}
+.verdict__points {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.verdict__points .covered {
+  color: var(--good);
+}
+.verdict__points .missed {
+  color: var(--text-muted);
+}
+.verdict details {
+  margin-top: 8px;
+}
+.verdict summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.verdict__reference {
+  margin: 8px 0 0;
+  white-space: pre-line;
+  color: var(--text-body);
+}
+
+.good {
+  color: var(--good);
+}
+.bad {
+  color: var(--bad);
+}
+.muted {
+  color: var(--text-muted);
+}
+
+/* Обзор курса. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0 0 22px;
+}
+.card {
+  padding: 14px 16px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+}
+.card__value {
+  font-family: var(--font-term);
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--accent);
+}
+.card__label {
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+
+.list {
+  margin: 0 0 18px;
+  padding-left: 20px;
+}
+.list li {
+  margin: 4px 0;
+}
+
+.result {
+  margin: 0 0 20px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--divider);
+}
+.result__score {
+  font-family: var(--font-term);
+  font-size: 40px;
+  line-height: 1;
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: var(--size-secondary);
+}
+
+/* ── Запоминание ──────────────────────────────────────────────────────────
+   Четыре уровня усвоения — четыре оттенка одной шкалы: от серого «новое» до
+   зелёного «уверенно». Шкала, а не радуга: цвет здесь говорит «насколько»,
+   и читаться он должен одним взглядом, без легенды. */
+:root {
+  --lvl-new: var(--divider);
+  --lvl-learning: #d8903a;
+  --lvl-young: #6aa8d8;
+  --lvl-mature: var(--good);
+}
+
+.today {
+  margin: 4px 0 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+}
+.today__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.today__value {
+  font-family: var(--font-term);
+  font-size: 40px;
+  line-height: 1;
+  color: var(--accent);
+}
+.today__label {
+  color: var(--text-muted);
+}
+
+.mastery {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--divider);
+}
+.mastery__part {
+  flex-basis: 0;
+  min-width: 0;
+}
+.mastery__part--mature { background: var(--lvl-mature); }
+.mastery__part--young { background: var(--lvl-young); }
+.mastery__part--learning { background: var(--lvl-learning); }
+.mastery__part--new { background: var(--lvl-new); }
+
+.mastery__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 4px;
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+.legend::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 0;
+}
+.legend--mature::before { background: var(--lvl-mature); }
+.legend--young::before { background: var(--lvl-young); }
+.legend--learning::before { background: var(--lvl-learning); }
+.legend--new::before { background: var(--lvl-new); }
+.legend--cross::before {
+  width: 16px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2px dashed var(--text-muted);
+  vertical-align: 3px;
+}
+
+.level {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--size-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.level--new { background: var(--divider); color: var(--text-muted); }
+.level--learning { background: color-mix(in srgb, var(--lvl-learning) 22%, transparent); color: var(--lvl-learning); }
+.level--young { background: color-mix(in srgb, var(--lvl-young) 22%, transparent); color: var(--lvl-young); }
+.level--mature { background: color-mix(in srgb, var(--lvl-mature) 22%, transparent); color: var(--lvl-mature); }
+
+/* Карточка повторения: вопрос крупно, ответ под чертой, оценки внизу. */
+.back {
+  margin-bottom: 12px;
+}
+.flash {
+  max-width: 680px;
+  margin: 8px auto 0;
+  padding: 26px 28px 22px;
+  border: 1px solid var(--divider);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--text) 8%, transparent);
+}
+.flash__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  font-size: var(--size-secondary);
+}
+.flash__front {
+  font-family: var(--font-term);
+  font-size: 24px;
+  line-height: 1.3;
+}
+.flash__hint {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+}
+.flash__actions {
+  justify-content: center;
+}
+.flash__back {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--divider);
+  font-size: 17px;
+}
+.flash__extras {
+  margin-top: 12px;
+}
+.flash pre,
+.concept pre {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--input-bg);
+  font-family: var(--font-mono);
+  font-size: var(--size-secondary);
+  white-space: pre-wrap;
+}
+
+.hook {
+  margin: 6px 0;
+  color: var(--text);
+}
+.pitfall {
+  margin: 6px 0;
+  color: var(--lvl-learning);
+}
+
+.grades {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+.grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border: 1px solid var(--btn-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.grade:hover {
+  background: var(--btn-hover-bg);
+}
+.grade__key {
+  font-size: var(--size-label);
+  color: var(--text-muted);
+}
+.grade--again { border-color: var(--bad); color: var(--bad); }
+.grade--hard { border-color: var(--lvl-learning); color: var(--lvl-learning); }
+.grade--good { border-color: var(--lvl-young); color: var(--lvl-young); }
+.grade--easy { border-color: var(--lvl-mature); color: var(--lvl-mature); }
+
+/* Вспомнить после раздела урока. */
+.lesson__progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.recall {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.recall__label {
+  font-size: var(--size-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.recall__q {
+  margin: 6px 0 10px;
+  font-weight: 600;
+}
+.recall__a p {
+  margin: 6px 0 0;
+}
+
+/* Понятия темы. */
+.concepts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.concept {
+  padding: 14px 16px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  transition: box-shadow 0.4s ease;
+}
+.concept--flash {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.concept__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.concept__term {
+  margin: 0;
+  font-family: var(--font-term);
+  font-size: 19px;
+  font-weight: var(--term-weight);
+}
+.concept__def {
+  margin: 8px 0;
+}
+.concept__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.chip {
+  padding: 2px 10px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--size-secondary);
+  cursor: pointer;
+}
+.chip:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.chip--cross {
+  border-style: dashed;
+}
+
+/* Карта: узлы-кружки, цвет — уровень усвоения. */
+/* Большая карта не ужимается до мелкого шрифта — её прокручивают. */
+.map-holder {
+  margin: 8px 0 20px;
+  overflow: auto;
+  max-height: 72vh;
+}
+.map {
+  display: block;
+  width: 100%;
+  min-width: var(--map-min, 0);
+  height: auto;
+}
+.map__edge {
+  stroke: var(--text-muted);
+  stroke-opacity: 0.45;
+  stroke-width: 1.4;
+}
+.map__edge--cross {
+  stroke-dasharray: 5 4;
+}
+.map__spoke {
+  stroke: var(--divider);
+  stroke-width: 1;
+}
+.map__hub {
+  fill: var(--accent);
+}
+.map__hub-label {
+  fill: var(--bg-solid);
+  font-size: 12px;
+  font-weight: 600;
+}
+.map__node {
+  cursor: pointer;
+}
+.map__node circle {
+  stroke: var(--bg-solid);
+  stroke-width: 2;
+}
+.map__node--new circle { fill: var(--lvl-new); }
+.map__node--learning circle { fill: var(--lvl-learning); }
+.map__node--young circle { fill: var(--lvl-young); }
+.map__node--mature circle { fill: var(--lvl-mature); }
+.map__node--foreign circle {
+  fill-opacity: 0.55;
+}
+.map__node:hover circle,
+.map__node:focus circle {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.map__label {
+  fill: var(--text);
+  font-size: 12px;
+}
+.map__node--foreign .map__label {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.sheet li {
+  margin: 6px 0;
+}
+
+/* ── Фокус-сессия ──────────────────────────────────────────────────────── */
+
+/* Таймер в заголовке: видно всегда, где бы ни был в курсе. */
+.head__focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-term);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.head__focus[data-phase="break"] {
+  border-color: var(--good);
+  color: var(--good);
+}
+.head__focus[data-paused="true"] {
+  opacity: 0.6;
+}
+
+.focus-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+  color: var(--text-muted);
+}
+.focus-strip strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.focus-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg-solid) 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+.focus-card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 24px 26px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-solid);
+  box-shadow: var(--shadow);
+}
+.focus-card h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-term);
+  font-weight: 500;
+}
+.focus-card .answer {
+  min-height: 110px;
+}
+.focus-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+}
+.focus-mode {
+  padding: 10px;
+  border: 1px solid var(--btn-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.focus-mode[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--btn-hover-bg);
+}
+.focus-mode__time {
+  display: block;
+  font-family: var(--font-term);
+  font-size: 20px;
+  color: var(--accent);
+}
+.focus-mode__name {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.focus-goal {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--input-color);
+  font: inherit;
+}
+.focus-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 6px 0;
+  color: var(--text-body);
+}
+.focus-clock {
+  margin: 10px 0 4px;
+  font-family: var(--font-term);
+  font-size: 56px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--good);
+}
+.focus-parked {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+}
+
+/* Половина пункта: направление верное, но не до конца. */
+.verdict__points .partial {
+  color: var(--lvl-learning);
+}
+
+/* Понятие, которое раздел только называет, — показано, а не спрошено. */
+.recall--new {
+  border-left-color: var(--lvl-young);
+  background: color-mix(in srgb, var(--lvl-young) 8%, transparent);
+}
+.recall--new .recall__label {
+  color: var(--lvl-young);
+}
+
+/* Подробный разбор раздела. */
+.deep {
+  margin: 16px 0 0;
+}
+.deep__body {
+  margin-top: 10px;
+  padding: 4px 16px 8px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+}
+
+/* Обсуждение: лента реплик, поле вопроса, голос. */
+.talk {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+}
+.talk__log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.talk__log:not(:empty) {
+  margin-bottom: 10px;
+}
+.talk__line {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  white-space: pre-line;
+}
+.talk__line--me {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.talk__line--noa {
+  align-self: flex-start;
+  background: var(--btn-hover-bg);
+  white-space: normal;
+}
+.talk__line--noa > :first-child {
+  margin-top: 0;
+}
+.talk__line--noa > :last-child {
+  margin-bottom: 0;
+}
+.talk__line--wait {
+  align-self: flex-start;
+  color: var(--text-muted);
+}
+.talk__line--error {
+  align-self: flex-start;
+  color: var(--bad);
+}
+.talk__input {
+  min-height: 56px;
+}
+.talk__actions {
+  margin-top: 8px;
+}
+
+/* Ноа в браузере: окно — вкладка, сворачивать нечего. Закрыть — вернуться
+   на главную Ноа онлайн. */
+.is-web [data-el="minimize"] {
+  display: none;
+}
+
+/* Устный зачёт в браузере: ход зачёта в углу, поверх страницы. */
+.oral {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(60vh, 460px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-solid);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.oral__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.oral__state {
+  margin-right: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.oral__log {
+  overflow-y: auto;
+  padding: 8px 12px 12px;
+}
+
+.oral__line {
+  margin: 6px 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.oral__line--me {
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+}
+
+.oral__line--error {
+  color: var(--error-text);
+}
+
+/* ── Узкий экран: телефон и сайт с телефона ────────────────────────────────
+   Колонка тем в 250 px съедала экран телефона целиком, уроку оставалась
+   полоска. Здесь темы — полоса сверху, её листают пальцем вбок; урок — на
+   всю ширину, кнопки переносятся, а не уезжают за край. */
+@media (max-width: 760px) {
+  .head {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 12px 12px 10px 14px;
+  }
+
+  .head__course {
+    order: 5;
+    flex-basis: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12.5px;
+  }
+
+  .bar {
+    width: 70px;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .side {
+    flex: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--divider);
+    scrollbar-width: none;
+  }
+
+  .topics {
+    flex: none;
+    display: flex;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .side__home,
+  .side__final,
+  .topic {
+    flex: none;
+    width: 168px;
+    margin: 0;
+    border-color: var(--divider);
+  }
+
+  .side__home,
+  .side__final {
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .main {
+    flex: 1 1 auto;
+    padding: 16px 14px 32px;
+  }
+
+  .page__title {
+    font-size: 22px;
+  }
+
+  .steps {
+    flex-wrap: wrap;
+  }
+
+  .grades,
+  .focus-modes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .main pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* Несколько курсов — переключатель над обзором. */
+.course-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+
+.course-switch:empty {
+  display: none;
+}
+
+.course-switch__label {
+  margin-right: 4px;
+  font-size: var(--size-label);
+  color: var(--text-muted);
+}
+
+.course-switch__item {
+  max-width: 260px;
+  padding: 5px 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--btn-border);
+  border-radius: var(--btn-radius, 999px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.course-switch__item:hover {
+  color: var(--text);
+}
+
+.course-switch__item[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Ноа в браузере без модели: плашка вверху со ссылкой на подключение. */
+.model-missing {
+  padding: 10px 16px;
+  background: #fbf2dc;
+  color: #171b26;
+  font-size: 14px;
+  border-bottom: 1px solid #e8d9b0;
+}
+
+.model-missing a {
+  font-weight: 700;
+  color: #2b5bc4;
+}
+
+/* ── Урок с Ноа (lesson-agent.js) ──────────────────────────────────────
+   Кольцо Ноа и её вопрос, под ними — план урока: текущий раздел раскрыт
+   (главное пунктами и схема), пройденные свёрнуты. Текст разговора — по
+   желанию, свёрнутым внизу. */
+
+.agent {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.agent__stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent__orb {
+  flex: none;
+  width: 220px;
+  height: 110px;
+  margin: -10px -20px;
+}
+
+.agent__now {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent__status {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.agent__where {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.agent__ask {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 26px;
+  color: var(--text);
+}
+
+.agent__ask:empty {
+  display: none;
+}
+
+.agent__controls,
+.agent__type {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent__type .agent__input {
+  flex: 1;
+  min-width: 220px;
+  font-size: 16px;
+}
+
+.agent__plan {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent__step {
+  padding: 8px 12px;
+  border: 1px solid var(--divider);
+  border-radius: min(var(--card-radius, 10px), 10px);
+  color: var(--text-muted);
+  transition:
+    background var(--dur-base, 0.2s) ease,
+    border-color var(--dur-base, 0.2s) ease;
+}
+
+.agent__step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent__step-num {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.agent__step.is-done {
+  opacity: 0.7;
+}
+
+.agent__step.is-done .agent__step-num {
+  border-color: var(--ok, var(--accent));
+  color: var(--ok, var(--accent));
+}
+
+.agent__step.is-now {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-solid));
+  color: var(--text);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.agent__step.is-now .agent__step-num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-solid);
+}
+
+.agent__step-title {
+  font-weight: 600;
+}
+
+.agent__step-gist {
+  margin: 4px 0 0 34px;
+  font-size: 13px;
+}
+
+.agent__points {
+  margin: 10px 0 4px 34px;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.agent__points li::marker {
+  color: var(--accent);
+}
+
+.agent__step .scheme {
+  margin: 10px 0 2px 34px;
+}
+
+.agent__transcript summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.agent__log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.agent__line {
+  max-width: 90%;
+  padding: 8px 12px;
+  border-radius: min(var(--card-radius, 10px), 10px);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.agent__line--noa {
+  align-self: flex-start;
+  background: var(--soft, var(--btn-hover-bg));
+}
+
+.agent__line--noa p {
+  margin: 0 0 6px;
+}
+
+.agent__line--me {
+  align-self: flex-end;
+  border: 1px solid var(--accent);
+}
+
+@media (max-width: 600px) {
+  .agent__stage {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .agent__points,
+  .agent__step .scheme,
+  .agent__step-gist {
+    margin-left: 0;
+  }
+}
+
+/* ── Урок вслух (lesson-reader.js) ─────────────────────────────────────── */
+
+.reader {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--bg-solid);
+}
+
+.reader__where {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.lesson.reader-focus > *,
+.lesson.reader-focus li,
+.lesson.reader-focus p {
+  transition: opacity var(--dur-base, 0.2s) ease;
+}
+
+.lesson.reader-focus :is(h2, h3, p, li, blockquote):not(.reader-now) {
+  opacity: 0.28;
+}
+
+.lesson .reader-now {
+  opacity: 1;
+  background: color-mix(in srgb, var(--sel-bg, var(--accent)) 22%, transparent);
+  box-shadow: -4px 0 0 var(--accent);
+  border-radius: 2px;
+}
+
+.reader__select {
+  position: fixed;
+  z-index: 70;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.25));
+}
+
+/* ── Тема: разбор с Ноа и три раздела ───────────────────────────────────── */
+
+.lead-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 6px 0 14px;
+}
+
+.discuss-now {
+  font-size: 15px;
+  padding-inline: 18px;
+}
+
+.substeps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 12px;
+}
+
+.substeps .step {
+  font-size: 12.5px;
+  padding: 4px 10px;
+}
+
+/* ── Практика в терминале: вход из темы ────────────────────────────────── */
+
+.practice-intro {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.practice-intro p {
+  margin: 0;
+}
+
+/* ── Схема раздела (scheme.js) ─────────────────────────────────────────── */
+
+.scheme {
+  margin: 0;
+  padding: 12px 14px 8px;
+  border: 1px solid var(--divider);
+  border-radius: min(var(--card-radius, 10px), 10px);
+  background: var(--bg-solid);
+  overflow-x: auto;
+}
+
+.scheme figcaption {
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.scheme__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 380px;
+  margin: 0 auto;
+}
+
+/* Цвет — по роли блока: откуда начинается, что посередине, к чему ведёт. */
+.scheme__box {
+  stroke-width: 1.6;
+  fill: color-mix(in srgb, var(--accent) 12%, var(--bg-solid));
+  stroke: var(--accent);
+}
+
+.scheme__box--start {
+  fill: color-mix(in srgb, var(--ok-fill, #5f8c4c) 16%, var(--bg-solid));
+  stroke: var(--ok-fill, #5f8c4c);
+}
+
+.scheme__box--end {
+  fill: color-mix(in srgb, var(--warn, #f2c14e) 22%, var(--bg-solid));
+  stroke: color-mix(in srgb, var(--warn, #f2c14e) 80%, var(--text));
+}
+
+.scheme__label {
+  fill: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.scheme__edge {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.6;
+}
+
+.scheme__head {
+  fill: var(--text-muted);
+}
+
+.scheme__pill {
+  fill: var(--bg-solid);
+  stroke: var(--divider);
+}
+
+.scheme__edge-label {
+  fill: var(--label);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ── «Собрать курс» в окне обучения ──────────────────────────────────── */
+
+.builder {
+  max-width: 640px;
+  margin: 18px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+}
+.builder[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.builder__title {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+.builder p {
+  margin: 0;
+}
+.builder__quality {
+  align-self: flex-start;
+  padding: 6px 8px;
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+.builder__status:empty {
+  display: none;
+}
+.builder__past {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.builder__past:empty {
+  display: none;
+}
+.builder__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--btn-border);
+  border-radius: 8px;
+}
+.builder__item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.builder__why {
+  margin: 0;
+}
+
+.account {
+  border-color: var(--accent);
+}
+.account__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* ── Лобби: все курсы ──────────────────────────────────────────────────── */
+
+.lobby {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.lobby__card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--btn-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lobby__card:hover {
+  border-color: var(--accent);
+}
+.lobby__card[aria-current="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.lobby__title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.lobby__about {
+  color: var(--text-muted);
+  font-size: var(--size-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lobby__about:empty {
+  display: none;
+}
+
+.lobby__meta {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.link-more {
+  align-self: flex-start;
+  margin: 4px 0 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.link-more:hover {
+  text-decoration: underline;
+}
+
+/* ── Главная курса ─────────────────────────────────────────────────────────
+   Сверху — главный блок: что делать сейчас, одной большой кнопкой. Ниже —
+   путь по темам, «Сегодня» плитками, слабые места и карта. Справка свёрнута. */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 0 22px;
+  padding: 22px 24px;
+  border: 1px solid var(--divider);
+  border-radius: 14px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    color-mix(in srgb, var(--accent) 3%, var(--bg-solid));
+}
+
+.hero__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hero__titles {
+  min-width: 0;
+}
+
+.hero__title {
+  margin: 0 0 6px;
+  font-family: var(--font-term);
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.hero__lead {
+  margin: 0;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero__all {
+  flex: none;
+  margin: 4px 0 0;
+}
+
+.hero__progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero__percent {
+  font-family: var(--font-term);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__bar {
+  flex: 1;
+  width: auto;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.hero__meta {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+
+/* Главная кнопка — крупная, во всю ширину блока действий. */
+.hero__go {
+  flex: 1 1 320px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "label where" "topic topic";
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--bg-solid);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 30%, transparent);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.hero__go:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.hero__go-label {
+  grid-area: label;
+  font-weight: 700;
+  font-size: 15px;
+}
+.hero__go-where {
+  grid-area: where;
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0.8;
+}
+.hero__go-topic {
+  grid-area: topic;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.hero__side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 200px;
+}
+.hero__side .button {
+  flex: 1;
+}
+
+/* Блоки ниже главного. */
+.home-block {
+  margin: 0 0 22px;
+}
+
+.home-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.home-block__title {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+.home-block__head .home-block__title {
+  margin: 0;
+}
+
+/* Путь курса: тема — столбик, заполненный на её процент. */
+.path {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 46px;
+}
+
+.path__step {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  min-width: 6px;
+  padding: 0;
+  border: 1px solid var(--divider);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  overflow: hidden;
+  cursor: pointer;
+}
+.path__step:hover {
+  border-color: var(--accent);
+}
+.path__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.path__step--done .path__fill {
+  background: var(--good);
+}
+.path__step.is-now {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.path__step.is-now .path__fill {
+  background: var(--accent);
+}
+
+.path__legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+.legend--done::before { background: var(--good); }
+.legend--now::before { background: var(--accent); }
+.legend--rest::before { background: var(--divider); }
+
+/* «Сегодня» — две плитки рядом. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0 0 22px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+}
+.tile .mastery {
+  align-self: stretch;
+  margin-top: 6px;
+}
+.tile .mastery__legend {
+  margin: 4px 0 6px;
+}
+
+.tile__label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.tile__value {
+  font-family: var(--font-term);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.tile__sub {
+  color: var(--text-muted);
+}
+
+.tile__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0;
+  font-size: var(--size-secondary);
+  color: var(--text-muted);
+}
+.tile .button {
+  margin-top: auto;
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-link {
+  padding: 6px 12px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--size-secondary);
+  cursor: pointer;
+}
+.chip-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.home-how {
+  margin: 8px 0 20px;
+}
+.home-how summary {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.home-how .list {
+  margin-top: 10px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .hero {
+    padding: 18px;
+  }
+  .hero__top {
+    flex-direction: column;
+  }
+  .hero__side {
+    flex-direction: row;
+    flex-basis: 100%;
+  }
+  .path {
+    height: 34px;
+    gap: 2px;
+  }
+}
+
+/* ── Ролик к уроку ─────────────────────────────────────────────────────── */
+
+.video {
+  margin: 10px 0 14px;
+}
+.video__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.video__status {
+  color: var(--text-muted);
+  font-size: var(--size-secondary);
+}
+.video__status.is-bad {
+  color: var(--error);
+}
+.video__player {
+  margin-top: 10px;
+}
+.video__screen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--accent);
+  border-radius: var(--card-radius, 8px);
+  background: #060809;
+  box-shadow: 0 0 22px -10px var(--accent);
+}
+.video__tools {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
