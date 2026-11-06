@@ -206,10 +206,13 @@ const SCENES = {
     await page.open(demo);
     await page.run(`
       const g = await import("/js/learn-app/goals.js");
-      const ideas = g.suggestDay();
-      ideas.forEach((idea) => g.goals.save(idea));
-      const course = ideas[0]?.course ?? "astro";
-      g.goals.save({ period: "month", start: g.periodStart("month"), kind: "topics", course, target: 3, title: "Свет, альбедо и Солнце", by: "noa" });
+      const course = "matan";
+      // Сверху вниз: сессия → месяц → неделя, задачи дня цепляются к неделе сами.
+      const year = g.goals.save({ period: "year", start: g.periodStart("year"), kind: "course", course, title: "Сдать матанализ на «отлично»", by: "user" });
+      const month = g.goals.save({ period: "month", start: g.periodStart("month"), kind: "topics", course, target: 3, title: "Тейлор, исследование функции, интегралы", parent: year.id, by: "noa" });
+      const week = g.goals.save({ period: "week", start: g.periodStart("week"), kind: "drill", course, topic: "taylor", title: "Тейлор: урок, наизусть, устный экзамен", parent: month.id, by: "noa" });
+      g.suggestDay().forEach((idea) => g.goals.save(idea));
+      g.goals.save({ period: "day", start: g.periodStart("day"), kind: "interview", course, topic: "taylor", title: "Устный экзамен: формула Тейлора", parent: week.id, by: "noa" });
       const first = g.goals.all().find((x) => x.period === "day" && x.kind === "focus");
       if (first) g.goals.save({ ...first, done: true, doneAt: Date.now() });
     `);

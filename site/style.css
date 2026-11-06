@@ -188,7 +188,7 @@ html[data-look="classic"] .phone { box-shadow: 0 0 0 8px #171b26, var(--shadow);
 
 /* ── Разделы ── */
 section { position: relative; }
-.how, .features, .goals, .looks, .mcp, .final { max-width: var(--wrap); margin: 0 auto; padding: clamp(80px, 11vw, 140px) var(--gutter) 0; }
+.how, .features, .anything, .goals, .looks, .desktop, .mcp, .final { max-width: var(--wrap); margin: 0 auto; padding: clamp(80px, 11vw, 140px) var(--gutter) 0; }
 .section__head { max-width: 760px; margin-bottom: 56px; }
 
 /* Как это работает — шаги, линия дорастает при прокрутке. */
@@ -314,3 +314,9 @@ html[data-look="classic"] .code__copy { background: #f2c14e; }
 .doc ul { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
 .doc b { color: var(--t1); }
 .doc__date { color: var(--t3); font-size: 14px; }
+
+/* Что угодно — подпись предмета в карточке. */
+.anything .card .label { margin-bottom: 14px; }
+/* Программа для компьютера. */
+.desktop__row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.desktop__note { font: 500 13px/1 var(--mono); color: var(--t3); }
