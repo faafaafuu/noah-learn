@@ -456,7 +456,7 @@ html[data-look="classic"] .device__url { background: #f7f6f1; }
 
 /* ── Своя модель ── */
 .brain { max-width: var(--wrap); margin: 0 auto; padding: 80px var(--gutter); }
-.brain__list { list-style: none; padding: 0; margin: 40px 0 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.brain__list { list-style: none; padding: 0; margin: 40px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .brain__list li { padding: 18px; border: 1px solid var(--line); background: var(--plate); display: grid; gap: 8px; }
 .brain__list b { font: 700 20px/1 var(--head); color: var(--t1); }
 .brain__list span { font-size: 13px; color: var(--t3); }
