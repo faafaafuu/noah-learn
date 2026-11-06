@@ -189,6 +189,39 @@ const SCENES = {
     await page.close();
   },
 
+  // Qrack для сайта: главная с целями дня, вкладка «Цели», обзор курса и
+  // классическая тема. Цели ставятся тем же кодом, что в приложении.
+  async qrack(b) {
+    const page = await b.page(PHONE);
+    await page.open("/dev/learn.html");
+    await page.run(`localStorage.clear(); localStorage.setItem("learn.look", '"neon"');`);
+    await page.open("/dev/learn.html");
+    await page.run(`
+      const g = await import("/js/learn-app/goals.js");
+      const ideas = g.suggestDay();
+      ideas.forEach((idea) => g.goals.save(idea));
+      const week = g.goals.save({ period: "week", start: g.periodStart("week"), kind: "topics", course: ideas[0]?.course ?? "devops", target: 2, title: "Пройти 2 темы за неделю", by: "ai" });
+      g.goals.save({ period: "month", start: g.periodStart("month"), kind: "course", course: ideas[0]?.course ?? "devops", title: "Дойти до Kubernetes", by: "noa" });
+      const first = g.goals.all().find((x) => x.period === "day" && x.kind === "focus");
+      if (first) g.goals.save({ ...first, done: true, doneAt: Date.now() });
+    `);
+    await page.open("/dev/learn.html");
+    await sleep(800);
+    await page.shot(join(OUT, "qrack-home.png"));
+    await page.run(nav(`nav.tab("goals")`));
+    await sleep(900);
+    await page.shot(join(OUT, "qrack-goals.png"));
+    const course = await page.run(`return (await (await fetch("/dev/learn-fixtures.json")).json()).overview?.[0]?.id ?? "devops"`);
+    await page.run(nav(`nav.tab("courses"); nav.push("course", { course: ${JSON.stringify(course)} })`));
+    await sleep(900);
+    await page.shot(join(OUT, "qrack-course.png"));
+    await page.run(`localStorage.setItem("learn.look", '"classic"');`);
+    await page.open("/dev/learn.html");
+    await sleep(800);
+    await page.shot(join(OUT, "qrack-classic.png"));
+    await page.close();
+  },
+
   async desktop(b) {
     const page = await b.page(DESKTOP);
     await page.open("/dev/learning.html");

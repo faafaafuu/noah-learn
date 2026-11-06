@@ -1,224 +1,225 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-look="neon">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>NOAH Учёба — курс под вашу цель</title>
-    <meta name="description" content="Скажите, чему хотите научиться, — Ноа соберёт курс: уроки, карточки, задачи, экзамен, практику и ролики-схемы. В браузере, на iPhone и на компьютере." />
+    <title>Qrack — крякни мозг: учись так, чтобы понял</title>
+    <meta name="description" content="Qrack собирает курс под твою цель — первая тема за минуты, — объясняет голосом, гоняет до «наизусть», ставит в настоящий терминал и проводит собеседование как на звонке. Цели на день, неделю, месяц и год." />
     <meta name="theme-color" content="#060809" />
-    <meta property="og:title" content="NOAH Учёба — курс под вашу цель" />
-    <meta property="og:description" content="Ноа собирает курс по вашей цели и ведёт по нему голосом: уроки, повторение, проверка, практика и ролики." />
-    <meta property="og:image" content="media/phone-course.png" />
+    <meta property="og:title" content="Qrack — крякни мозг" />
+    <meta property="og:description" content="Курс под твою цель, наставник голосом, практика, собеседование разговором и цели, которые тянут друг друга." />
+    <meta property="og:image" content="media/qrack-home.png" />
     <link rel="icon" href="media/noah-mark.svg" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <canvas class="sky" aria-hidden="true"></canvas>
+
     <header class="top">
       <a class="brand" href="./">
-        <img src="media/noah-mark.svg" alt="" width="26" height="24" />
-        <span>NOAH</span><span class="brand__sub">Учёба</span>
+        <span class="brand__mark"><img src="media/noah-mark.svg" alt="" width="22" height="20" /></span>
+        <span class="brand__name">QRACK</span>
       </a>
       <nav class="top__nav" aria-label="Разделы">
         <a href="#how">Как это работает</a>
         <a href="#features">Возможности</a>
-        <a href="#platforms">Где учиться</a>
-        <a href="#faq">Вопросы</a>
+        <a href="#goals">Цели</a>
+        <a href="#mcp">Для нейросетей</a>
       </nav>
       <a class="btn btn--small" href="app/">Открыть</a>
     </header>
 
     <main>
+      <!-- Первый экран -->
       <section class="hero">
         <div class="hero__text">
-          <p class="label">// учёба с ИИ-наставником</p>
-          <h1>Курс под вашу цель — за&nbsp;вечер</h1>
-          <p class="lead">
-            Скажите, чему хотите научиться и&nbsp;зачем. Ноа составит курс тема за темой — уроки, понятия, карточки, задачи и&nbsp;экзамен — и&nbsp;проведёт по нему: объяснит голосом, напомнит повторить, проверит.
+          <p class="label reveal">// учёба с ИИ-наставником</p>
+          <h1 class="hero__title reveal">
+            <span class="glitch" data-text="Крякни">Крякни</span>
+            <span class="hero__brain">мозг.</span>
+          </h1>
+          <p class="lead reveal">
+            Учись так, чтобы понял — а&nbsp;не пролистал. Qrack собирает курс под твою цель — первая тема готова за&nbsp;минуты, объясняет голосом, гоняет до&nbsp;«наизусть», ставит в&nbsp;настоящий терминал и&nbsp;проводит собеседование как на&nbsp;звонке.
           </p>
-          <div class="hero__actions">
-            <a class="btn" href="app/">Открыть в браузере</a>
-            <a class="btn btn--ghost" href="#platforms">iPhone и компьютер</a>
+          <div class="hero__actions reveal">
+            <a class="btn btn--glow" href="app/">Открыть Qrack</a>
+            <a class="btn btn--ghost" href="#how">Как это работает</a>
           </div>
-          <p class="hero__note">Без установки. Курсы и прогресс — в аккаунте, на всех устройствах сразу.</p>
+          <ul class="hero__facts reveal" aria-label="Коротко">
+            <li><b data-count="5">5</b><span>минут — и&nbsp;первая тема готова</span></li>
+            <li><b data-count="6">6</b><span>способов выучить тему</span></li>
+            <li><b>24/7</b><span>наставник голосом</span></li>
+          </ul>
         </div>
-        <div class="hero__phone">
-          <div class="phone">
-            <video src="media/flow.mp4" poster="media/phone-home.png" autoplay muted loop playsinline aria-label="Проход по курсу в приложении"></video>
+
+        <div class="hero__stage" aria-hidden="true">
+          <canvas class="ring ring--big"></canvas>
+          <div class="phone tilt">
+            <img src="media/qrack-home.png" alt="" width="390" height="844" />
           </div>
+          <span class="orbit orbit--1">Урок с Ноа</span>
+          <span class="orbit orbit--2">Наизусть</span>
+          <span class="orbit orbit--3">Собеседование</span>
+          <span class="orbit orbit--4">Цели дня</span>
         </div>
       </section>
 
-      <section class="who" aria-labelledby="who-title">
-        <h2 id="who-title" class="visually-hidden">Для кого</h2>
-        <article>
-          <p class="label">// входите в профессию</p>
-          <h3>От основ до продакшена</h3>
-          <p>DevOps, AI-инженер, аналитик: курс под вакансию — от Linux и сетей до того, о чём спросят на работе.</p>
-        </article>
-        <article>
-          <p class="label">// готовитесь к собеседованию</p>
-          <h3>Слабые места на виду</h3>
-          <p>Мини-экзамены по темам, финальный по курсу, разговор с Ноа как с интервьюером — и список того, что подтянуть.</p>
-        </article>
-        <article>
-          <p class="label">// учите для себя</p>
-          <h3>Путеводители</h3>
-          <p>«Деревья Москвы», «Кофе от зерна до чашки», «Умный дом» — разделы, виды, цифры и картинки. Читать с интересом, без задач.</p>
-        </article>
-      </section>
+      <!-- Бегущая строка -->
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker__row">
+          <span>Kubernetes к собеседованию</span><span>Python с нуля</span><span>Английский для работы</span><span>Сети и Linux</span><span>Финансовая грамотность</span><span>История искусства</span><span>Эндуро на большом мотоцикле</span><span>Умный дом</span>
+          <span>Kubernetes к собеседованию</span><span>Python с нуля</span><span>Английский для работы</span><span>Сети и Linux</span><span>Финансовая грамотность</span><span>История искусства</span><span>Эндуро на большом мотоцикле</span><span>Умный дом</span>
+        </div>
+      </div>
 
-      <section id="how" class="how">
-        <h2>Как это работает</h2>
+      <!-- Как это работает -->
+      <section class="how" id="how">
+        <div class="section__head reveal">
+          <p class="label">// как это работает</p>
+          <h2>От «хочу понять» до&nbsp;«прошёл собеседование»</h2>
+        </div>
         <ol class="steps">
-          <li>
-            <span class="steps__n">01</span>
-            <h3>Цель — словами</h3>
-            <p>«Kubernetes с нуля до продакшена — чтобы пройти собеседование на DevOps». Пары фраз хватит.</p>
+          <li class="step reveal">
+            <span class="step__n">01</span>
+            <h3>Скажи цель</h3>
+            <p>«Kubernetes к&nbsp;собеседованию на&nbsp;DevOps» или «разобраться, как работает фондовый рынок». Своими словами, хоть голосом.</p>
           </li>
-          <li>
-            <span class="steps__n">02</span>
-            <h3>Ноа пишет курс</h3>
-            <p>План, потом каждая тема: урок разделами, понятия, карточки, задачи и мини-экзамен. Учиться можно с первой готовой темы.</p>
+          <li class="step reveal">
+            <span class="step__n">02</span>
+            <h3>Курс собирается сам</h3>
+            <p>План, уроки, понятия, карточки, задачи и&nbsp;экзамен — тема за&nbsp;темой. Учиться можно с&nbsp;первой темы, пока остальные дописываются.</p>
           </li>
-          <li>
-            <span class="steps__n">03</span>
-            <h3>Урок — разделами</h3>
-            <p>После раздела — вспомнить одно понятие без подсказки: так оно держится вдвое лучше, чем после перечитывания.</p>
+          <li class="step reveal">
+            <span class="step__n">03</span>
+            <h3>Учишься с&nbsp;Ноа</h3>
+            <p>Урок голосом с&nbsp;вопросами по&nbsp;ходу, понятия наизусть по&nbsp;шагам, практика в&nbsp;настоящем терминале — Ноа видит вывод и&nbsp;подсказывает.</p>
           </li>
-          <li>
-            <span class="steps__n">04</span>
-            <h3>Повторение по расписанию</h3>
-            <p>Карточки возвращаются, когда пора: сегодня — то, что вот-вот забудется, остальное подождёт.</p>
+          <li class="step reveal">
+            <span class="step__n">04</span>
+            <h3>Проверяешь себя</h3>
+            <p>Экзамен темы, собеседование разговором — Ноа дослушивает, уточняет и&nbsp;разбирает пробелы, — и&nbsp;повторение карточек ровно тогда, когда начинаешь забывать.</p>
           </li>
-          <li>
-            <span class="steps__n">05</span>
-            <h3>Проверка и практика</h3>
-            <p>Задачи, экзамен по теме, финальный по курсу. На компьютере — практика в настоящем терминале на своём сервере.</p>
-          </li>
+          <span class="steps__line" aria-hidden="true"></span>
         </ol>
       </section>
 
-      <section id="features" class="features">
-        <h2>Возможности</h2>
+      <!-- Возможности -->
+      <section class="features" id="features">
+        <div class="section__head reveal">
+          <p class="label">// возможности</p>
+          <h2>Всё, чтобы тема не&nbsp;вылетела из&nbsp;головы</h2>
+        </div>
+        <div class="grid">
+          <article class="card reveal">
+            <span class="card__icon card__icon--voice"></span>
+            <h3>Урок с&nbsp;Ноа</h3>
+            <p>Читает раздел, объясняет по-человечески, отвечает на&nbsp;вопросы голосом. Выделил непонятное слово — сразу «Объяснить».</p>
+          </article>
+          <article class="card reveal">
+            <span class="card__icon card__icon--drill"></span>
+            <h3>Наизусть</h3>
+            <p>Понятия порциями по&nbsp;шесть: прочитал, восстановил по&nbsp;пропускам, пересказал своими словами — и&nbsp;оно держится.</p>
+          </article>
+          <article class="card reveal">
+            <span class="card__icon card__icon--term"></span>
+            <h3>Практика в&nbsp;терминале</h3>
+            <p>Сценарий по&nbsp;теме на&nbsp;твоём сервере: Ноа видит вывод, ведёт по&nbsp;шагам и&nbsp;не&nbsp;даст запустить опасное.</p>
+          </article>
+          <article class="card reveal">
+            <span class="card__icon card__icon--talk"></span>
+            <h3>Собеседование разговором</h3>
+            <p>Как на&nbsp;звонке: вопрос, ты&nbsp;отвечаешь, Ноа дослушивает, уточняет и&nbsp;не&nbsp;уходит дальше, пока суть не&nbsp;станет понятной.</p>
+          </article>
+          <article class="card reveal">
+            <span class="card__icon card__icon--cards"></span>
+            <h3>Карточки по&nbsp;интервалам</h3>
+            <p>Повторение ровно тогда, когда начинаешь забывать. Пять минут в&nbsp;день — и&nbsp;понятия переходят в&nbsp;долгую память.</p>
+          </article>
+          <article class="card reveal">
+            <span class="card__icon card__icon--model"></span>
+            <h3>Любая модель</h3>
+            <p>Claude, OpenRouter, Gemini, Groq или свой сервис — подключи ключ в&nbsp;настройках. Ключ хранится зашифрованным на&nbsp;устройстве.</p>
+          </article>
+        </div>
+      </section>
 
-        <div class="feature">
-          <div class="feature__media"><div class="phone phone--still"><img src="media/phone-lesson.png" alt="Урок: раздел про контейнеры и виртуальные машины" loading="lazy" /></div></div>
-          <div class="feature__text">
-            <p class="label">// урок с ноа</p>
-            <h3>Объясняет, а не только показывает</h3>
-            <p>Урок можно слушать: Ноа читает раздел вслух и делает паузы между шагами. Непонятно — «Разобрать подробно» разложит раздел по полочкам, «Обсудить» — разговор голосом, где можно перебивать и переспрашивать.</p>
+      <!-- Цели -->
+      <section class="goals" id="goals">
+        <div class="goals__text reveal">
+          <p class="label">// цели</p>
+          <h2>Большая цель тянет маленькие</h2>
+          <p class="lead">
+            Год → месяц → неделя → сегодня. Скажи, чего хочешь и&nbsp;к&nbsp;какому сроку, — Ноа разложит по&nbsp;темам курса и&nbsp;твоему темпу. Задачи дня отмечаются сами: урок прочитан, проверка сдана, минуты фокуса набраны.
+          </p>
+          <ul class="cascade" aria-label="Как цели тянут друг друга">
+            <li class="cascade__row" data-level="0"><span class="tick"></span>Пройти курс DevOps к&nbsp;декабрю <em>год</em></li>
+            <li class="cascade__row" data-level="1"><span class="tick"></span>Темы 7–10: Docker и&nbsp;Kubernetes <em>ноябрь</em></li>
+            <li class="cascade__row" data-level="2"><span class="tick"></span>Docker: урок, проверка, практика <em>неделя</em></li>
+            <li class="cascade__row" data-level="3"><span class="tick"></span>Урок: Docker <em>сегодня</em></li>
+            <li class="cascade__row" data-level="3"><span class="tick"></span>Повторить 20 карточек <em>сегодня</em></li>
+            <li class="cascade__row" data-level="3"><span class="tick"></span>Фокус 25 минут <em>сегодня</em></li>
+          </ul>
+        </div>
+        <div class="phone phone--side tilt reveal" aria-hidden="true">
+          <img src="media/qrack-goals.png" alt="" width="390" height="844" loading="lazy" />
+        </div>
+      </section>
+
+      <!-- Две темы -->
+      <section class="looks">
+        <div class="section__head reveal">
+          <p class="label">// под настроение</p>
+          <h2>Неон ночью, классика днём</h2>
+          <p class="lead">Две темы оформления — переключаются в&nbsp;профиле. Попробуй прямо здесь.</p>
+        </div>
+        <div class="looks__switch reveal" role="group" aria-label="Тема">
+          <button class="look is-on" data-look="neon" type="button">Неон</button>
+          <button class="look" data-look="classic" type="button">Классика</button>
+        </div>
+        <div class="looks__phones reveal">
+          <div class="phone tilt"><img class="looks__img" src="media/qrack-home.png" data-neon="media/qrack-home.png" data-classic="media/qrack-classic.png" alt="" width="390" height="844" loading="lazy" /></div>
+          <div class="phone tilt phone--back"><img src="media/qrack-course.png" alt="" width="390" height="844" loading="lazy" /></div>
+        </div>
+      </section>
+
+      <!-- MCP -->
+      <section class="mcp" id="mcp">
+        <div class="mcp__text reveal">
+          <p class="label">// для нейросетей</p>
+          <h2>Твоя нейросеть собирает курсы прямо в&nbsp;Qrack</h2>
+          <p class="lead">
+            Подключи Qrack в&nbsp;Claude, ChatGPT или Cursor как MCP-коннектор — и&nbsp;проси: «собери курс по&nbsp;Terraform», «поправь третью тему», «поставь мне цели на&nbsp;неделю». Всё проверяется по&nbsp;стандарту курса и&nbsp;сразу появляется в&nbsp;приложении.
+          </p>
+          <div class="code reveal">
+            <code class="code__url">https://noahlab.ru/qrack/mcp</code>
+            <button class="code__copy" type="button" data-copy="https://noahlab.ru/qrack/mcp">Копировать</button>
           </div>
         </div>
-
-        <div class="feature feature--wide">
-          <div class="feature__media">
-            <video class="screen" src="media/lesson-video.mp4" poster="media/lesson-video.jpg" controls preload="none" playsinline aria-label="Ролик-схема «Pod и манифест»"></video>
-          </div>
-          <div class="feature__text">
-            <p class="label">// ролики-схемы</p>
-            <h3>Видео по любому разделу — за пару минут</h3>
-            <p>Кнопка «Видео по разделу» — и Ноа собирает короткий ролик: блоки, стрелки, что куда идёт, и её голос поверх. Не пересказ текста, а картинка, которую трудно нарисовать словами. Этот ролик собран сам, по разделу курса про Kubernetes.</p>
-          </div>
-        </div>
-
-        <div class="feature feature--flip">
-          <div class="feature__media"><div class="phone phone--still"><img src="media/phone-course.png" alt="Обзор курса: путь курса клетками и слабые места" loading="lazy" /></div></div>
-          <div class="feature__text">
-            <p class="label">// обзор курса</p>
-            <h3>Видно, где вы и что подтянуть</h3>
-            <p>Путь курса клетками: пройденные темы, текущая, впереди. Ниже — слабые места: темы, где ошибок больше всего, одной кнопкой к повторению.</p>
-          </div>
-        </div>
-
-        <div class="feature">
-          <div class="feature__media"><div class="phone phone--still"><img src="media/phone-review.png" alt="Повторение: карточка «Что такое права доступа?»" loading="lazy" /></div></div>
-          <div class="feature__text">
-            <p class="label">// повторение</p>
-            <h3>Карточки, которые не надо планировать</h3>
-            <p>Понятия курса становятся карточками. Вспомнили — карточка уходит дальше, ошиблись — вернётся скоро. Ответ можно сказать вслух: Ноа сверит его с определением.</p>
-          </div>
-        </div>
-
-        <div class="feature feature--flip">
-          <div class="feature__media"><div class="phone phone--still"><img src="media/phone-guide.png" alt="Путеводитель «Деревья Москвы»" loading="lazy" /></div></div>
-          <div class="feature__text">
-            <p class="label">// путеводители</p>
-            <h3>Почитать для интереса</h3>
-            <p>Тема словами — и Ноа собирает путеводитель: разделы, виды, цифры, советы, «а вы знали?» и картинки из Википедии. Читать можно, пока он дописывается; свой раздел — добавить просьбой.</p>
-          </div>
-        </div>
-
-        <ul class="cards">
-          <li><b>Фокус</b><span>Таймер занятий, минуты за день и неделю, серия дней подряд.</span></li>
-          <li><b>Практика в терминале</b><span>На компьютере: тема курса руками на своём сервере, Ноа смотрит в терминал и ведёт по шагам.</span></li>
-          <li><b>Голосом</b><span>«Ноа, открой урок», «сделай видео по этому разделу», «собери путеводитель про кофе».</span></li>
-          <li><b>Одна учёба везде</b><span>Начали на компьютере — продолжили в метро: курсы, прогресс, ролики и путеводители в аккаунте.</span></li>
+        <ul class="tools reveal" aria-label="Инструменты">
+          <li><b>create_course</b> собрать курс</li>
+          <li><b>add_topic</b> добавить или поправить тему</li>
+          <li><b>get_topic</b> прочитать тему целиком</li>
+          <li><b>list_courses</b> что уже есть</li>
+          <li><b>add_goal</b> поставить цель</li>
+          <li><b>list_goals</b> что сделано</li>
         </ul>
       </section>
 
-      <section class="desk">
-        <div class="desk__text">
-          <p class="label">// на компьютере</p>
-          <h2>В NOAH — с голосом и практикой</h2>
-          <p>На компьютере учёба живёт в помощнике NOAH: тот же курс в большом окне, урок с Ноа голосом, практика в терминале на своём сервере и голосовые команды.</p>
-        </div>
-        <img class="screen" src="media/desktop-home.png" alt="Окно учёбы на компьютере: продолжить, повторение, фокус, мои курсы" loading="lazy" />
-      </section>
-
-      <section id="platforms" class="platforms">
-        <h2>Где учиться</h2>
-        <div class="platforms__grid">
-          <article>
-            <h3>Браузер</h3>
-            <p>Сразу, без установки. Вход — через Telegram или Google.</p>
-            <a class="btn" href="app/">Открыть</a>
-            <p class="small">Из России с мобильного — <a href="https://m.noahlab.ru/learn/app/">m.noahlab.ru/learn</a></p>
-          </article>
-          <article>
-            <h3>iPhone</h3>
-            <p>Приложение «NOAH Учёба»: урок голосом, повторение, практика по SSH. Бета — файл .ipa.</p>
-            <a class="btn btn--ghost" href="https://github.com/faafaafuu/asis/releases/latest">Скачать бету</a>
-          </article>
-          <article>
-            <h3>Компьютер</h3>
-            <p>NOAH для Windows, macOS и Linux — учёба, голос и практика в терминале.</p>
-            <a class="btn btn--ghost" href="https://github.com/faafaafuu/asis/releases/latest">Скачать NOAH</a>
-          </article>
-        </div>
-      </section>
-
-      <section id="faq" class="faq">
-        <h2>Вопросы</h2>
-        <details>
-          <summary>Какая модель пишет курсы?</summary>
-          <p>Ваша. Мост к подписке Claude, ключ OpenRouter или локальная Ollama — что подключите. Ключ модели остаётся у вас: в браузере он не уходит на сервер.</p>
-        </details>
-        <details>
-          <summary>Насколько можно верить урокам?</summary>
-          <p>Курс пишет модель — она может ошибиться. Поэтому Ноа сверяет ответы с уроком, просит не выдумывать цифры и названия, а сборку под учёбу ведёт моделью точнее той, что для разговора. Сомневаетесь — «Обсудить» и спросите прямо.</p>
-        </details>
-        <details>
-          <summary>Где хранятся курсы и прогресс?</summary>
-          <p>В вашем аккаунте на noahlab.ru: так их видят все ваши устройства. На телефоне и компьютере открытое читается и без сети.</p>
-        </details>
-        <details>
-          <summary>Ролики и путеводители есть у всех?</summary>
-          <p>Их собирает сервер, и сейчас — для аккаунтов с подключённым мостом к модели. Курсы, уроки, повторение и проверка работают с любой подключённой моделью.</p>
-        </details>
-        <details>
-          <summary>Можно принести свой курс?</summary>
-          <p>Да: курс можно собрать через свою нейросеть по MCP — Claude, ChatGPT и другие отправляют его в аккаунт по ссылке, он появляется во всех приложениях.</p>
-        </details>
+      <!-- Финал -->
+      <section class="final reveal">
+        <canvas class="ring ring--final" aria-hidden="true"></canvas>
+        <h2>Мозг крякает — значит, понял.</h2>
+        <p class="lead">В браузере уже сейчас. На&nbsp;iPhone — скоро в&nbsp;App Store.</p>
+        <a class="btn btn--glow" href="app/">Открыть Qrack</a>
       </section>
     </main>
 
     <footer class="foot">
-      <p>NOAH Учёба — часть <a href="https://noahlab.ru/">NOAH</a>.</p>
-      <p>
-        <a href="https://github.com/faafaafuu/noah-learn">GitHub</a> ·
-        <a href="https://noahlab.ru/#/docs">Документация</a>
-      </p>
+      <span class="brand__name">QRACK</span>
+      <span>Курсы, наставник и&nbsp;цели — от&nbsp;команды NOAH</span>
+      <a href="/">noahlab.ru</a>
     </footer>
-    <script src="site.js" defer></script>
+
+    <script src="site.js" type="module"></script>
   </body>
 </html>
